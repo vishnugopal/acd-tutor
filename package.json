@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "@flue/runtime": "^0.9.2",
+    "@flue/sdk": "^0.9.2"
+  },
+  "devDependencies": {
+    "@flue/cli": "^0.9.2",
+    "@types/bun": "latest"
+  },
+  "name": "acd-tutor",
+  "module": "app.ts",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
