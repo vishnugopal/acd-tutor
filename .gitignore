@@ -32,3 +32,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Claude Code: per-machine local settings (memory path set by `bun run setup`).
+# Note: .claude/memory/ is intentionally NOT ignored — it's shared via git.
+.claude/settings.local.json
