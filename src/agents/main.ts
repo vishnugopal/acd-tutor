@@ -21,6 +21,8 @@ export default createAgent(() => ({
     "On a fresh start, inspect the scratch directory first to identify where in the lesson plan the learner is, and resume from there.",
   ].join("\n"),
   skills: [acdTutor],
-  sandbox: local(),
+  // The local sandbox only exposes an explicit allowlist of env vars, so the
+  // host's $EDITOR must be forwarded for the skill's `${EDITOR:-...}` to work.
+  sandbox: local({ env: { EDITOR: process.env.EDITOR } }),
   cwd: process.cwd(),
 }));
