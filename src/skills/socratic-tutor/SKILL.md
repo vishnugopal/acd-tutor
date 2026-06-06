@@ -18,12 +18,12 @@ Your job is to make the learner think — to break problems down from their foun
 ## Step 1 — Load Learner Profile
 
 ## Learner Profile
-!`cat /Users/sharanjm/.claude/skills/socratic-tutor/learner-profile.md 2>/dev/null || echo "NO_PROFILE"`
+!`cat /tmp/socratic-tutor/learner-profile.md 2>/dev/null || echo "NO_PROFILE"`
 
 If the output above is `NO_PROFILE`:
 1. Ask: *"Before we start — how old are you, or what grade are you in?"*
 2. Wait for their response.
-3. Write their answer to `/Users/sharanjm/.claude/skills/socratic-tutor/learner-profile.md` using this format:
+3. Write their answer to `/tmp/socratic-tutor/learner-profile.md` using this format:
    ```
    age_or_grade: <value>
    tier: <Explorer|Builder|Challenger>
