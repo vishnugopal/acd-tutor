@@ -87,7 +87,7 @@ Trigger: 3+ very short replies in a row ("yes", "no", "idk", "ok"), or the file 
    ```
 2. Make the next step physical and tiny: *"Just delete one of those two lines and save. That's the whole task."*
 3. Re-engage warmth: *"Let's find the piece that clicks — we'll go as small as we need to."*
-4. If still flat, offer to wrap: *"Want to stop here? Lesson files stay in /tmp/acd-tutor/scratch — we can pick up exactly where we left off."*
+4. If still flat, offer to wrap: *"Want to stop here? Your lesson files stay in the scratch directory — next time we'll pick up exactly where we left off."*
 
 ---
 

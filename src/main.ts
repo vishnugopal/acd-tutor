@@ -4,7 +4,9 @@ import { startFlueServer } from "./runner";
 
 const GREETING = `Hi! Welcome to ACD tutor!
 
-I'm here to explain any concept to you. Can you tell me what you'd like to learn today?
+I'll teach you to tell apart Actions, Calculations, and Data in real code.
+Say "let's start" (or anything, really) and I'll set up your first lesson —
+or pick up right where you left off.
 `;
 
 const FAREWELL = `Goodbye! Happy learning!`;

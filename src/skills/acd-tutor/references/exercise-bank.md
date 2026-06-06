@@ -1,6 +1,6 @@
 # Exercise Bank — Lesson Files
 
-Each lesson gets a fresh file at `/tmp/acd-tutor/scratch/lesson-N.ts`, written verbatim from the code blocks below (including the header comment), then opened in `$EDITOR`.
+Each lesson gets a fresh file at `<scratch-dir>/lesson-N.ts` (the scratch directory from your agent instructions; default `/tmp/acd-tutor/scratch`), written verbatim from the code blocks below (including the header comment), then opened in `$EDITOR`.
 
 Answer notes for every lesson are in [acd-concepts.md](acd-concepts.md) under "Per-Lesson Answer Notes".
 
