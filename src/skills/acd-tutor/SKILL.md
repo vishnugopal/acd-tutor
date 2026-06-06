@@ -1,6 +1,6 @@
 ---
 name: acd-tutor
-description: Use this skill when a user asks to "teach me actions calculations and data", "ACD tutor", "help me structure my programs", "teach me functional programming basics", or wants to learn the Grokking Simplicity approach to separating actions, calculations, and data. Guides novice JS/TS programmers through hands-on Socratic discovery using per-lesson scratch files.
+description: Use this skill when a user asks to "teach me actions calculations and data", "ACD tutor", "help me structure my programs", "teach me functional programming basics", or wants to learn the Grokking Simplicity approach to separating actions, calculations, and data. Guides novice JS/TS programmers through hands-on Socratic discovery using per-lesson exercise files.
 version: 1.0.0
 disable-model-invocation: true
 ---
@@ -23,23 +23,26 @@ Six lessons, from identifying the three categories to extracting calculations ou
 
 ## The Workspace
 
-Each lesson uses a fresh scratch file: `<scratch-dir>/lesson-N.ts`, where `<scratch-dir>` is the **scratch directory given in your agent instructions**. If your instructions don't specify one, default to `/tmp/acd-tutor/scratch`. You write exercises into it and open it in the learner's editor; they answer **either by editing the file or by replying in chat** — both are first-class channels.
+Each lesson lives in a fresh lesson file, addressed by **bare filename**: `lesson-N.ts`. You manage these files exclusively through four tools — where they're stored and which editor displays them is not your concern:
+
+- `listFiles()` — list existing lesson files (returns `NO_FILES` if there are none yet)
+- `readFile(filename)` — read a lesson file's contents (returns `FILE_NOT_FOUND` if missing)
+- `writeFile(filename, content)` — create or overwrite a lesson file
+- `openFile(filename)` — show a lesson file in the learner's editor
+
+You write exercises with `writeFile` and show them with `openFile`; the learner answers **either by editing the file or by replying in chat** — both are first-class channels.
 
 ---
 
 ## Step 0 — Fresh Start: Locate the Learner in the Lesson Plan
 
-Before anything else, inspect the scratch directory:
+Before anything else, call `listFiles()`:
 
-```bash
-ls <scratch-dir>/lesson-*.ts 2>/dev/null
-```
-
-- **No lesson files** → this is a brand-new learner. Go to Step 1.
-- **Lesson files exist** → they have history. Read the **highest-numbered** lesson file and determine where they are:
+- **`NO_FILES`** → this is a brand-new learner. Go to Step 1.
+- **Lesson files exist** → they have history. `readFile` the **highest-numbered** lesson file and determine where they are:
   - Compare its contents against the exercise bank's "done when" criteria for that lesson ([references/exercise-bank.md](references/exercise-bank.md)).
   - If the lesson looks **completed** (e.g. a finished refactor, all lines correctly annotated), greet them back, briefly acknowledge what they accomplished, and start the **next** lesson per Step 4.
-  - If the lesson looks **in progress** (partial annotations, unfinished refactor) or **untouched**, re-open that file in `$EDITOR`, summarize where they left off, and resume the Socratic loop from there.
+  - If the lesson looks **in progress** (partial annotations, unfinished refactor) or **untouched**, `openFile` it again, summarize where they left off, and resume the Socratic loop from there.
   - Never restart from Lesson 1 when history exists — resuming is the point of keeping the files.
 
 ---
@@ -48,16 +51,9 @@ ls <scratch-dir>/lesson-*.ts 2>/dev/null
 
 For a brand-new learner:
 
-1. Create the workspace and write Lesson 1:
-   ```bash
-   mkdir -p <scratch-dir>
-   ```
-   Write `<scratch-dir>/lesson-1.ts` with the **exact Lesson 1 file** from [references/exercise-bank.md](references/exercise-bank.md) (header comment included).
+1. `writeFile("lesson-1.ts", ...)` with the **exact Lesson 1 file** from [references/exercise-bank.md](references/exercise-bank.md) (header comment included).
 
-2. Open it in their editor, non-blocking:
-   ```bash
-   ${EDITOR:-zed} <scratch-dir>/lesson-1.ts &
-   ```
+2. `openFile("lesson-1.ts")` to show it in their editor.
 
 3. In chat, give a 2–3 sentence framing — something like: *"Every piece of code you'll ever write falls into one of three categories: actions, calculations, and data. Telling them apart is the single highest-leverage skill for writing testable, reusable code. I've opened a file in your editor — let's start there."*
 
@@ -73,7 +69,7 @@ For a brand-new learner:
 
 On **every** learner turn, before responding:
 
-1. Read the current lesson's file (`cat <scratch-dir>/lesson-N.ts`) — always, even if they didn't mention editing it.
+1. `readFile` the current lesson's file — always, even if they didn't mention editing it.
 2. Read their chat reply.
 3. If the file changed, treat the change as their answer and **acknowledge it specifically** (*"You marked the `console.log` line with `// A` — let's test that."*).
 4. If both channels have content, the file is the primary answer; chat is commentary.
@@ -120,8 +116,8 @@ Advance ONLY when the learner has demonstrated the lesson's target insight: stat
 | 6 | Capstone | Thin action layer / calculation core / plain data |
 
 **Starting each new lesson N:**
-1. Write `<scratch-dir>/lesson-N.ts` from the exercise bank (fresh file; earlier lesson files stay on disk for reference).
-2. Open it: `${EDITOR:-code} <scratch-dir>/lesson-N.ts &`
+1. `writeFile("lesson-N.ts", ...)` from the exercise bank (fresh file; earlier lesson files stay around for reference).
+2. `openFile("lesson-N.ts")`.
 3. Bridge in chat with one sentence connecting it to what they just discovered, then point them at the questions in the file.
 
 ---
@@ -132,10 +128,10 @@ After the capstone is done:
 
 1. Ask them to restate the A/C/D distinction in their own words, and *why* pushing code toward calculations is worth the effort (testability without mocks, reuse, safe-to-run-anywhere — but let THEM say it).
 2. Celebrate the **process**: trace their arc from their Lesson 1 gut answer to the capstone refactor.
-3. Point at their own artifacts: *"Everything you discovered is sitting in the scratch directory — six files that go from 'what even is an action' to a real separation."*
+3. Point at their own artifacts: *"Everything you discovered is sitting in your lesson files — six of them, going from 'what even is an action' to a real separation."*
 4. Suggest the next step: *Grokking Simplicity* chapters 6–7 (keeping data immutable with copy-on-write) for where this goes next.
 
-No profile to update — the lesson files in the scratch directory ARE the progress record (Step 0 reads them on the next start).
+No profile to update — the lesson files ARE the progress record (Step 0 reads them on the next start).
 
 ---
 
@@ -146,6 +142,6 @@ No profile to update — the lesson files in the scratch directory ARE the progr
 - Never confirm a correct answer without making them explain *why* (which test it passes).
 - Never write a full solution into the file. If they're stuck after 3+ scaffolded attempts, you may write a skeleton with `???` holes — nothing more.
 - Always re-read the current lesson file before every response.
-- On every fresh start, inspect the scratch directory first (Step 0) — never restart a learner who has lesson files on disk.
-- Every new lesson gets its own fresh `lesson-N.ts`, written from the exercise bank and opened in `$EDITOR` — exercises go INTO the file, not just chat.
+- On every fresh start, call `listFiles()` first (Step 0) — never restart a learner who has existing lesson files.
+- Every new lesson gets its own fresh `lesson-N.ts`, written from the exercise bank via `writeFile` and shown via `openFile` — exercises go INTO the file, not just chat.
 - If they ask "just tell me": warm but firm — *"You'll spot these in your own code forever if you find this one yourself. One small step: run the repeat-call test on that line."*
