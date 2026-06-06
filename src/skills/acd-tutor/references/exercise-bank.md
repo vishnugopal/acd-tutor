@@ -6,21 +6,63 @@ Answer notes for every lesson are in [acd-concepts.md](acd-concepts.md) under "P
 
 ---
 
-## Lesson 1 — Classify the mixed function + spot the data
+## Lesson 1 — Write your own action, calculation, and data (warm-up)
 
-**Target insight:** functions that compute something can still be actions; data is everything inert in the file.
-**Done when:** learner correctly classifies `processOrder` as an action with a *reason rooted in effects* (not vibes), and identifies most of the data (items array, constants, strings/numbers — perfection not required, reasoning is).
-**Common misconception:** "it computes a total, so it's a calculation."
+**Target insight:** the learner produces working gut-level prototypes of all three categories before any formal definition exists.
+**Done when:** all three artifacts genuinely land in the right category (verify against the Identification Checklist in [acd-concepts.md](acd-concepts.md)) AND the learner can defend each one in their own words with when-/how-many-times-style reasoning. If their "calculation" secretly logs or mutates, that's the teaching moment — probe with the repeat-call test, don't reveal.
+**Common misconception:** a "calculation" that secretly does something (logs, mutates a variable), or "data = any variable I declare."
 
 File `lesson-1.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 1
+//  ACD Tutor — Lesson 1 (Warm-up)
 // ------------------------------------------------------------
 //  This file is our shared workspace. I write exercises here;
 //  you can answer by editing this file (add comments, change
 //  code) or by replying in the chat. Save the file when done.
+// ============================================================
+
+//  Before any definitions, let's see your instincts.
+//  In everyday terms: an action DOES something, a calculation
+//  FIGURES SOMETHING OUT, and data just IS. Go with your gut.
+
+// 1) Write a small function you'd call an ACTION:
+function myAction(/* ??? */) {
+  // ???
+}
+
+// 2) Write a small function you'd call a CALCULATION:
+function myCalculation(/* ??? */) {
+  // ???
+}
+
+// 3) Write something you'd call DATA:
+const myData = /* ??? */ undefined;
+
+// ------------------------------------------------------------
+//  Q: For each of the three, say (in a comment or in chat):
+//     what makes it the thing you labeled it?
+// ------------------------------------------------------------
+export {}; // makes this file a module so lesson files never clash with each other
+```
+
+---
+
+## Lesson 2 — Classify the mixed function + spot the data
+
+**Target insight:** functions that compute something can still be actions; data is everything inert in the file.
+**Done when:** learner correctly classifies `processOrder` as an action with a *reason rooted in effects* (not vibes), and identifies most of the data (items array, constants, strings/numbers — perfection not required, reasoning is).
+**Common misconception:** "it computes a total, so it's a calculation."
+
+File `lesson-2.ts`:
+
+```ts
+// ============================================================
+//  ACD Tutor — Lesson 2
+// ------------------------------------------------------------
+//  You wrote your own three — now classify someone else's code.
+//  Edit this file or reply in chat, as always.
 // ============================================================
 
 type Item = { name: string; price: number; quantity: number };
@@ -62,17 +104,17 @@ export {}; // makes this file a module so lesson files never clash with each oth
 
 ---
 
-## Lesson 2 — Pinpoint the action lines (the hidden-actions zoo)
+## Lesson 3 — Pinpoint the action lines (the hidden-actions zoo)
 
 **Target insight:** specific lines make a function an action — and some of them hide well (`Date.now`, `Math.random`, reading mutable globals).
 **Done when:** learner identifies all four kinds of action lines (clock, randomness, global read/mutation, console) and can say *why each one* fails the same-input-same-output / doesn't-matter-when-or-how-many-times test.
 **Common misconception:** blaming complexity ("the if-statement", "the string building") instead of effects.
 
-File `lesson-2.ts`:
+File `lesson-3.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 2
+//  ACD Tutor — Lesson 3
 // ------------------------------------------------------------
 //  Same workspace, new puzzle. Edit this file or reply in chat.
 // ============================================================
@@ -107,17 +149,17 @@ export {}; // makes this file a module so lesson files never clash with each oth
 
 ---
 
-## Lesson 3 — Actions spread (contagion)
+## Lesson 4 — Actions spread (contagion)
 
 **Target insight:** calling an action makes you an action — purity is a property of the whole call graph.
 **Done when:** learner states that `formatGreeting` is an action *because of what it calls*, and discovers the fix (pass the time-dependent value in as a parameter).
 **Common misconception:** "the body of `formatGreeting` has no side effects, so it's a calculation."
 
-File `lesson-3.ts`:
+File `lesson-4.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 3
+//  ACD Tutor — Lesson 4
 // ------------------------------------------------------------
 //  Edit this file or reply in chat.
 // ============================================================
@@ -147,19 +189,19 @@ export {}; // makes this file a module so lesson files never clash with each oth
 
 ---
 
-## Lesson 4 — Extract the calculation
+## Lesson 5 — Extract the calculation
 
 **Target insight:** an action can't be made pure, but its computational core can be pulled out into a calculation, leaving a thin action.
 **Done when:** the learner's refactor has a function computing total (and optionally the receipt string) with ALL inputs as arguments and ALL outputs in the return value, and `processOrder` reduced to a thin shell. Accept any decomposition that satisfies all-explicit inputs/outputs.
 **Common misconception:** moving the loop into a helper that still reads/writes `orderCount` or still logs — extraction without purification.
 
-File `lesson-4.ts`:
+File `lesson-5.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 4
+//  ACD Tutor — Lesson 5
 // ------------------------------------------------------------
-//  Remember processOrder from Lesson 1? Here it is again.
+//  Remember processOrder from Lesson 2? Here it is again.
 //  This time you're going to operate on it.
 // ============================================================
 
@@ -200,17 +242,17 @@ export {}; // makes this file a module so lesson files never clash with each oth
 
 ---
 
-## Lesson 5 — Implicit → explicit (the harder extraction)
+## Lesson 6 — Implicit → explicit (the harder extraction)
 
 **Target insight:** implicit inputs become parameters; implicit outputs become return values. Mutating an argument is an implicit output.
 **Done when:** learner's calculation takes the tier/rates as parameters AND returns a new order object instead of mutating the argument; the action shell reads the globals and applies the result.
 **Common misconception:** parameterizing the globals but still mutating `order` — inputs fixed, output still implicit.
 
-File `lesson-5.ts`:
+File `lesson-6.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 5
+//  ACD Tutor — Lesson 6
 // ------------------------------------------------------------
 //  This one cheats in two different directions. Find both.
 // ============================================================
@@ -244,17 +286,17 @@ export {}; // makes this file a module so lesson files never clash with each oth
 
 ---
 
-## Lesson 6 — Capstone: separate a realistic function
+## Lesson 7 — Capstone: separate a realistic function
 
 **Target insight:** the architecture goal — thin action layer, calculation core, plain data.
 **Done when:** the refactor has (a) 2–4 pure functions covering validation, pricing/tax/shipping, and formatting; (b) a `checkout` action of roughly 5–8 lines that only sequences fetch → calculations → save/log; (c) learner can point at each piece and name its category. Grade structure, not whether their decomposition matches yours.
 **Common misconception:** extracting one mega-"calculation" that still calls `saveOrder` or `console.log` inside.
 
-File `lesson-6.ts`:
+File `lesson-7.ts`:
 
 ```ts
 // ============================================================
-//  ACD Tutor — Lesson 6 (Capstone)
+//  ACD Tutor — Lesson 7 (Capstone)
 // ------------------------------------------------------------
 //  A realistic mess. Separate it into:
 //    - DATA          (plain shapes and values)

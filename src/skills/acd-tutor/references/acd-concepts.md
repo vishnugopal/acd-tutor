@@ -106,31 +106,39 @@ Actions are unavoidable (a program that does nothing observable is useless) — 
 
 (See [exercise-bank.md](exercise-bank.md) for the exercise source code.)
 
-### Lesson 1 — `processOrder`
+### Lesson 1 — write your own A/C/D (warm-up)
+- There is no fixed answer — verify each of the learner's three artifacts against the Identification Checklist above.
+- Typical failure modes:
+  - "Calculation" that logs, mutates a variable, or reads a module-level `let` → run the repeat-call test on *their own* function; let the contradiction surface.
+  - "Data" written as a function or expression that runs → ask: *"Does this DO anything, or does it just sit there?"*
+  - "Action" that's accidentally pure (e.g. just returns a sum) → celebrate the instinct, then ask them to break it: *"What would you add so that running it twice actually mattered?"*
+- Done = all three genuinely in the right category AND the learner defends each in their own words with when-/how-many-times reasoning. Their artifacts are reusable material for later detours.
+
+### Lesson 2 — `processOrder`
 - Classification: **action** (mutates module-level `orderCount`, calls `console.log`).
 - The data in the file: the `Item` shape, the `items` array literal, the `DISCOUNT_THRESHOLD` and `DISCOUNT_RATE` constants, the computed `total` value, the receipt string. Numbers and strings throughout.
 - Common wrong answer: "calculation, because it computes a total." Counter with the repeat-call test (orderCount differs) and the observable-log test.
 
-### Lesson 2 — line hunt in `createUserSession`
+### Lesson 3 — line hunt in `createUserSession`
 - Action-making lines: `Date.now()` (timing input), `Math.random()` (nondeterminism), `console.log` (output effect), reading module-level `let activeSessions` and pushing to it (implicit input + mutation).
 - The conditional and string concatenation are NOT what makes it an action — learners often blame "complexity" rather than effects.
 
-### Lesson 3 — contagion in `formatGreeting` → `getTimeOfDay`
+### Lesson 4 — contagion in `formatGreeting` → `getTimeOfDay`
 - `formatGreeting` looks pure (takes a name, returns a string) but calls `getTimeOfDay`, which reads the clock → both are actions.
 - Target insight: purity is a property of the whole call graph, not the function body you can see.
 - Bonus discovery: fix is to pass the hour (or the time-of-day string) IN as a parameter.
 
-### Lesson 4 — extracting from `processOrder`
+### Lesson 5 — extracting from `processOrder`
 - Correct shape: a pure `calculateTotal(items): number` (or `calculateOrder(items): { total, receipt }`), with `processOrder` reduced to: call calculation → log → increment counter.
 - Verify with: repeat-call test on the new function; check no remaining reads/writes of anything non-local inside it.
 - Acceptable variations: separate `formatReceipt(items, total): string` calculation; returning a result object. Don't demand one exact shape — demand all-explicit inputs/outputs.
 
-### Lesson 5 — implicit → explicit in `applyLoyaltyDiscount`
+### Lesson 6 — implicit → explicit in `applyLoyaltyDiscount`
 - Implicit input: module-level `loyaltyRates` and `currentTier`. Implicit output: mutates the `order` argument (`order.total = ...`, `order.discountApplied = true`).
 - Correct shape: calculation takes `(order, tier, rates)` and **returns a new order object** (spread/copy) instead of mutating. The thin action reads the globals and passes them in.
 - Watch for: learner makes inputs explicit but still mutates the argument — that's still an implicit output. One more nudge needed.
 
-### Lesson 6 — capstone `checkout`
+### Lesson 7 — capstone `checkout`
 - The original interleaves: fetching a cart (action), validation logic (extractable calculation), tax + shipping math (extractable calculation), receipt formatting (extractable calculation), logging and saving (actions).
 - Done looks like: 2–4 pure functions (e.g. `validateCart`, `priceCart` / `calculateTax` + `calculateShipping`, `formatReceipt`) + plain data shapes + a `checkout` action of roughly 5–8 lines that only sequences: fetch → calculations → save/log.
 - Grade on the structure (thin action / calculation core / data), not on matching your decomposition.
