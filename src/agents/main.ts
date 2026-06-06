@@ -1,10 +1,16 @@
 import { createAgent, type AgentRouteHandler } from "@flue/runtime";
 import acdTutor from "../skills/acd-tutor/SKILL.md" with { type: "skill" };
+import { createLessonFileTools } from "../tools";
 
 import { local } from "@flue/runtime/node";
 
-/** Where lesson scratch files live. Override with ACD_TUTOR_SCRATCH_DIR. */
-const scratchDir = process.env.ACD_TUTOR_SCRATCH_DIR ?? "/tmp/acd-tutor/scratch";
+/**
+ * Host-side workspace config. The skill never sees these — it manages lesson
+ * files purely through the listFiles/readFile/writeFile/openFile tools.
+ * Override the location with ACD_TUTOR_SCRATCH_DIR; openFile uses $EDITOR.
+ */
+const scratchDir =
+  process.env.ACD_TUTOR_SCRATCH_DIR ?? "/tmp/acd-tutor/scratch";
 
 /**
  * Exporting this middleware opts the agent into the HTTP transport at
@@ -15,14 +21,12 @@ export const route: AgentRouteHandler = (_c, next) => next();
 export default createAgent(() => ({
   model: "anthropic/claude-sonnet-4-6",
   instructions: [
-    "You are an ACD tutor.",
-    `The lesson scratch directory is: ${scratchDir}`,
-    "Write lesson files into that directory and read the learner's edits from it.",
-    "On a fresh start, inspect the scratch directory first to identify where in the lesson plan the learner is, and resume from there.",
+    "You are an Actions, Calculations, and Data tutor (based on the book Grokking Simplicity by Eric Normand).",
+    "Manage lesson files exclusively with the listFiles, readFile, writeFile, and openFile tools, addressing files by bare filename (e.g. lesson-1.ts).",
+    "On a fresh start, call listFiles first to find existing lesson files and resume where the learner left off.",
   ].join("\n"),
   skills: [acdTutor],
-  // The local sandbox only exposes an explicit allowlist of env vars, so the
-  // host's $EDITOR must be forwarded for the skill's `${EDITOR:-...}` to work.
-  sandbox: local({ env: { EDITOR: process.env.EDITOR } }),
+  tools: createLessonFileTools({ scratchDir }),
+  sandbox: local(),
   cwd: process.cwd(),
 }));
