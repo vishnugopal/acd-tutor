@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 270" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arrowPink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d23669"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b7a4b"/>
+    </marker>
+  </defs>
+
+  <!-- the agent loop card -->
+  <rect x="12" y="14" width="312" height="240" rx="14" fill="#fdf7f9" stroke="#d23669" stroke-width="2"/>
+  <text x="36" y="46" font-size="12" font-weight="800" letter-spacing="1.5" fill="#d23669">THE AGENT LOOP</text>
+
+  <!-- steps -->
+  <g font-size="13" fill="#333">
+    <circle cx="46" cy="72" r="10" fill="#d23669"/>
+    <text x="46" y="75.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+    <text x="66" y="76.5">Model reads the context</text>
+
+    <line x1="36" y1="90" x2="300" y2="90" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+
+    <circle cx="46" cy="108" r="10" fill="#d23669"/>
+    <text x="46" y="111.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+    <text x="66" y="112.5">Model thinks</text>
+
+    <line x1="36" y1="126" x2="300" y2="126" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+
+    <circle cx="46" cy="144" r="10" fill="#d23669"/>
+    <text x="46" y="147.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+    <text x="66" y="148.5">Model emits a <tspan font-weight="650" fill="#d23669">tool call</tspan></text>
+
+    <line x1="36" y1="162" x2="300" y2="162" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+
+    <circle cx="46" cy="180" r="10" fill="#d23669"/>
+    <text x="46" y="183.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+    <text x="66" y="184.5">Tool result joins the context</text>
+
+    <line x1="36" y1="198" x2="300" y2="198" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+
+    <circle cx="46" cy="216" r="10" fill="#c9a227"/>
+    <text x="46" y="219.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+    <text x="66" y="220.5">Back to 1, until done</text>
+  </g>
+
+  <!-- arrows between cards -->
+  <text x="398" y="96" font-size="11" font-weight="650" fill="#6b6b6b" text-anchor="middle">tool call</text>
+  <line x1="338" y1="110" x2="456" y2="110" stroke="#d23669" stroke-width="2" marker-end="url(#arrowPink)"/>
+
+  <line x1="456" y1="164" x2="338" y2="164" stroke="#2b7a4b" stroke-width="2" marker-end="url(#arrowGreen)"/>
+  <text x="398" y="188" font-size="11" font-weight="650" fill="#6b6b6b" text-anchor="middle">result</text>
+
+  <!-- the real world card -->
+  <rect x="470" y="14" width="238" height="240" rx="14" fill="#faf9f6" stroke="#b8b2a7" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="494" y="46" font-size="12" font-weight="800" letter-spacing="1.5" fill="#7d7669">THE REAL WORLD</text>
+
+  <g font-size="13" fill="#333">
+    <text x="494" y="86">📄</text>
+    <text x="522" y="86">read &amp; write files</text>
+    <line x1="494" y1="102" x2="684" y2="102" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+
+    <text x="494" y="128">⌨️</text>
+    <text x="522" y="128">run shell commands</text>
+    <line x1="494" y1="144" x2="684" y2="144" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+
+    <text x="494" y="170">✏️</text>
+    <text x="522" y="170">launch your editor</text>
+    <line x1="494" y1="186" x2="684" y2="186" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+
+    <text x="494" y="212">🌐</text>
+    <text x="522" y="212">call APIs</text>
+  </g>
+</svg>

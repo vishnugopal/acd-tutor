@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 240" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <rect x="1" y="1" width="678" height="238" rx="10" fill="#f6f4f0" stroke="#e9e5de" stroke-width="2"/>
+  <g font-size="13" fill="#333">
+    <text x="28" y="40">src/console/</text>
+    <text x="62" y="68">index.tsx</text>
+    <text x="62" y="96">App.tsx</text>
+    <text x="62" y="124">Transcript.tsx</text>
+    <text x="62" y="152">Markdown.tsx</text>
+    <text x="62" y="180">InputBar.tsx</text>
+    <text x="62" y="208">TextInput.tsx</text>
+  </g>
+  <g stroke="#8a857c" stroke-width="1.5" fill="none">
+    <path d="M 36 48 V 204"/>
+    <path d="M 36 64 H 54"/>
+    <path d="M 36 92 H 54"/>
+    <path d="M 36 120 H 54"/>
+    <path d="M 36 148 H 54"/>
+    <path d="M 36 176 H 54"/>
+    <path d="M 36 204 H 54"/>
+  </g>
+  <g font-size="12.5" font-style="italic" fill="#9b958c">
+    <text x="210" y="68">← runConsole(): mounts the app</text>
+    <text x="210" y="96">← state machine: transcript, streaming, queue</text>
+    <text x="210" y="124">← scrollback of turns</text>
+    <text x="210" y="152">← marked + marked-terminal rendering</text>
+    <text x="210" y="180">← prompt, hints, slash commands</text>
+    <text x="210" y="208">← cursor movement, editing keys</text>
+  </g>
+</svg>
