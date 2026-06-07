@@ -108,7 +108,7 @@ export function InputBar({ busy, actions, onSubmit, onAction }: InputBarProps) {
         </Box>
       )}
       <PromptInput busy={busy} onSubmit={onSubmit} />
-      <Text dimColor> exit or ctrl+c to quit</Text>
+      <Text dimColor> /exit or ctrl+c to quit · /debug toggles debug</Text>
     </Box>
   );
 }

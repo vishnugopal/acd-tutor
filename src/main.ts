@@ -13,6 +13,13 @@ const FAREWELL = `Goodbye! Happy learning!`;
 
 const CHECK_MY_WORK_PROMPT = `Please check my work: read my current lesson file, review what I've done so far, and give me feedback.`;
 
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error(
+    "Error: ANTHROPIC_API_KEY is not set. Set it in .env before starting the tutor.",
+  );
+  process.exit(1);
+}
+
 console.log("Preparing tutor...");
 const { client, shutdown } = await startFlueServer({ port: 3789 });
 

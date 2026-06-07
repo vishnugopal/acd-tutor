@@ -6,9 +6,15 @@ export interface ConsoleAction {
   message: string;
 }
 
+/** One streamed chunk of a reply: prose, or a diagnostic line. */
+export interface ReplyChunk {
+  kind: "text" | "debug";
+  text: string;
+}
+
 export interface ConsoleOptions {
   /** Produces the streamed reply for one submitted line. */
-  reply: (line: string) => AsyncIterable<string>;
+  reply: (line: string) => AsyncIterable<ReplyChunk>;
   /** Shown once at the top of the transcript. */
   greeting?: string;
   /** Printed after the UI exits. */
@@ -25,6 +31,6 @@ export interface ConsoleOptions {
 
 /** One completed transcript entry. */
 export interface Message {
-  role: "user" | "tutor" | "error" | "info";
+  role: "user" | "tutor" | "error" | "info" | "debug";
   text: string;
 }

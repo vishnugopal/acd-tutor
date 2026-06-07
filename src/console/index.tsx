@@ -2,7 +2,7 @@ import { render } from "ink";
 import { App } from "./App";
 import type { ConsoleOptions } from "./types";
 
-export type { ConsoleAction, ConsoleOptions } from "./types";
+export type { ConsoleAction, ConsoleOptions, ReplyChunk } from "./types";
 
 /**
  * Runs the Ink chat UI until the user exits (`exit`/`quit` or Ctrl+C);

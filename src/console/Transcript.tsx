@@ -23,6 +23,15 @@ function MessageView({ message }: { message: Message }) {
           <Text dimColor>{message.text}</Text>
         </Box>
       );
+    case "debug":
+      // No bottom margin so consecutive diagnostic lines stack tightly.
+      return (
+        <Box>
+          <Text color="yellow" dimColor>
+            {message.text}
+          </Text>
+        </Box>
+      );
     default:
       return (
         <Box marginBottom={1}>

@@ -1,16 +1,73 @@
 import type { DirectAgentPayload, FlueClient } from "@flue/sdk";
 
+/** One streamed chunk of an agent reply. */
+export type AgentChunk =
+  /** Reply prose, streamed as deltas. */
+  | { kind: "text"; text: string }
+  /** One formatted diagnostic line (tool calls, turns, logs, …). */
+  | { kind: "debug"; text: string };
+
 export interface AgentSession {
   /** Conversation id — memory lives server-side on this for the session's lifetime. */
   instanceId: string;
-  /** Invokes the agent once and yields the reply's text chunks as they stream in. */
-  send(payload: DirectAgentPayload): AsyncIterable<string>;
+  /** Invokes the agent once and yields the reply's chunks as they stream in. */
+  send(payload: DirectAgentPayload): AsyncIterable<AgentChunk>;
+}
+
+const TRUNCATE_AT = 120;
+
+function truncate(value: unknown): string {
+  const text =
+    typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+  return text.length > TRUNCATE_AT ? `${text.slice(0, TRUNCATE_AT)}…` : text;
+}
+
+/**
+ * Renders one Flue event as a concise diagnostic line, or null for events
+ * that are noise (message bookkeeping, deltas — text deltas are the reply
+ * itself and are yielded as `text` chunks instead).
+ */
+function formatDebugEvent(event: {
+  type: string;
+  [key: string]: unknown;
+}): string | null {
+  switch (event.type) {
+    case "tool_start":
+      return `→ ${event.toolName}(${truncate(event.args)})`;
+    case "tool_call":
+      return `← ${event.toolName} ${event.isError ? "ERROR" : "ok"} in ${event.durationMs}ms: ${truncate(event.result)}`;
+    case "thinking_end":
+      return `thinking (${String(event.content ?? "").length} chars)`;
+    case "turn": {
+      const usage = event.usage as
+        | { inputTokens?: number; outputTokens?: number }
+        | undefined;
+      const tokens = usage
+        ? ` tokens=${usage.inputTokens ?? "?"}/${usage.outputTokens ?? "?"}`
+        : "";
+      const error = event.isError ? ` ERROR: ${truncate(event.error)}` : "";
+      return `turn ${event.model ?? "?"} stop=${event.stopReason ?? "?"}${tokens} in ${event.durationMs}ms${error}`;
+    }
+    case "log":
+      return `[${event.level}] ${event.message}`;
+    case "compaction":
+      return `compaction ${event.messagesBefore}→${event.messagesAfter} msgs in ${event.durationMs}ms`;
+    case "task_start":
+      return `task ${event.taskId} started: ${truncate(event.prompt)}`;
+    case "task":
+      return `task ${event.taskId} ${event.isError ? "ERROR" : "done"}: ${truncate(event.result)}`;
+    case "run_end":
+      return event.isError ? `run ERROR: ${truncate(event.error)}` : null;
+    default:
+      return null;
+  }
 }
 
 /**
  * Pins an agent + conversation instance over @flue/sdk's streaming HTTP
  * invoke (SSE under the hood). Transport-only: rendering and prompting stay
- * with the caller.
+ * with the caller — debug chunks are always emitted; filtering them is the
+ * caller's choice.
  */
 export function createAgentSession(
   client: FlueClient,
@@ -19,13 +76,18 @@ export function createAgentSession(
 ): AgentSession {
   return {
     instanceId,
-    async *send(payload: DirectAgentPayload): AsyncIterable<string> {
+    async *send(payload: DirectAgentPayload): AsyncIterable<AgentChunk> {
       const stream = client.agents.invoke(agent, instanceId, {
         mode: "stream",
         payload,
       });
       for await (const event of stream) {
-        if (event.type === "text_delta") yield event.text;
+        if (event.type === "text_delta") {
+          yield { kind: "text", text: event.text };
+          continue;
+        }
+        const line = formatDebugEvent(event);
+        if (line !== null) yield { kind: "debug", text: line };
       }
     },
   };
