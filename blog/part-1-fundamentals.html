@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Build a CLI Agent Using Flue</title>
+<meta name="description" content="What makes an agent in 2026? Not just prompts — a harness around an AI loop. We build a Socratic programming tutor with Flue, from first commit to a real terminal UI.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #d23669;
+    --accent-soft: rgba(210, 54, 105, 0.08);
+    --code-bg: #f6f4f0;
+    --code-border: #e9e5de;
+    --inline-code-bg: rgba(210, 54, 105, 0.06);
+    --rule: #ececec;
+    --kw: #9a4eae;       /* keywords */
+    --str: #2b7a4b;      /* strings */
+    --fn: #3b6ec7;       /* functions */
+    --cm: #9b958c;       /* comments */
+    --aside-bg: #fbf7ee;
+    --aside-border: #efe5cd;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-size: 17px; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .container {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 0 1.25rem 6rem;
+  }
+
+  /* ---------- header ---------- */
+  header.site {
+    padding: 2.5rem 0 0;
+    font-size: 0.95rem;
+  }
+
+  h1 {
+    font-size: 2.6rem;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.022em;
+    margin: 0.6rem 0 0.35rem;
+  }
+  .post-meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 3rem;
+  }
+
+  /* ---------- prose ---------- */
+  h2 {
+    font-size: 1.65rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    margin: 3.2rem 0 1rem;
+  }
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 2.4rem 0 0.8rem;
+  }
+  p { margin: 0 0 1.45rem; }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    background-image: linear-gradient(transparent 70%, var(--accent-soft) 0);
+  }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 3rem 0;
+  }
+
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1.45rem; }
+  li { margin-bottom: 0.45rem; }
+  li::marker { color: var(--accent); }
+
+  blockquote {
+    margin: 1.8rem 0;
+    padding: 0.1rem 0 0.1rem 1.3rem;
+    border-left: 3px solid var(--accent);
+    color: #444;
+    font-style: italic;
+  }
+  blockquote p { margin-bottom: 0.5rem; }
+
+  /* ---------- code ---------- */
+  code {
+    font-family: "SF Mono", ui-monospace, "Cascadia Code", "JetBrains Mono",
+      Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  p code, li code, h2 code, h3 code, aside code {
+    background: var(--inline-code-bg);
+    padding: 0.12em 0.35em;
+    border-radius: 4px;
+    color: #ad2955;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1.8rem 0;
+    line-height: 1.6;
+  }
+  pre code { font-size: 0.83rem; color: #333; }
+  .code-label {
+    display: block;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 1.8rem 0 -1.3rem;
+    text-align: right;
+  }
+  .code-label + pre { margin-top: 1.6rem; }
+
+  .kw  { color: var(--kw); }
+  .str { color: var(--str); }
+  .fn  { color: var(--fn); }
+  .cm  { color: var(--cm); font-style: italic; }
+
+  /* ---------- asides ---------- */
+  aside {
+    background: var(--aside-bg);
+    border: 1px solid var(--aside-border);
+    border-radius: 10px;
+    padding: 1rem 1.3rem;
+    margin: 1.8rem 0;
+    font-size: 0.95rem;
+  }
+  aside p:last-child { margin-bottom: 0; }
+  aside .aside-title {
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #8a6d1d;
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  /* ---------- diagrams ---------- */
+  figure.diagram {
+    margin: 2.4rem 0;
+  }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.9rem;
+    text-align: center;
+  }
+
+  figure.diagram svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  figure.diagram svg.stack-svg {
+    max-width: 33rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- comparison table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8rem 0;
+    font-size: 0.92rem;
+  }
+  th {
+    text-align: left;
+    font-weight: 700;
+    padding: 0.55rem 0.8rem;
+    border-bottom: 2px solid var(--text);
+  }
+  td {
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  footer.site {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 600px) {
+    html { font-size: 16px; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="site">
+  <h1>How to Build a CLI Agent Using Flue</h1>
+  <div class="post-meta">June 2026 · 25 min read</div>
+</header>
+
+<main>
+
+<p>In 1984, Benjamin Bloom published <a href="https://web.mit.edu/5.95/readings/bloom-two-sigma.pdf">a finding</a> that has haunted education ever since: students tutored one-on-one performed <em>two standard deviations</em> better than students in a conventional classroom. The average tutored kid beat 98% of the untutored ones. The catch — the reason it's called the <a href="https://en.wikipedia.org/wiki/Bloom%27s_2_sigma_problem">2 Sigma <em>Problem</em></a> — is that one-on-one tutoring never scaled. We've known the best way to teach for forty years and could never afford it.</p>
+
+<p>Then, rather suddenly, we could. An LLM is an infinitely patient tutor: it never sighs when you ask the same question a third time, never makes you feel slow, meets you exactly where you are at 2am for as long as you want. That's not a replacement for teachers — Bloom's tutors brought judgment, warmth, and accountability that no model has — but it's the first time the <em>one-on-one</em> part of his finding has been affordable at scale. Education + AI finally gives the 2 Sigma Problem a real shot at a solve.</p>
+
+<p>But that raises a question I couldn't stop thinking about: most of the world's best teaching material is <em>static</em>. It lives in books. How do you take a book's content — its concepts, its exercises, its carefully sequenced curriculum — and turn it into an AI that can actually <em>teach</em> you that same material, interactively, adaptively, one question at a time?</p>
+
+<p>There's an obvious place to steal the interaction model from: <a href="https://claude.com/claude-code">Claude Code</a>. Claude Code is an agent that lives in your terminal, reads your files, edits them, and talks to you about what it's doing. So — can we take inspiration from Claude Code, but run it in reverse? Instead of an agent that writes code <em>for</em> you, an agent that opens a file in <em>your</em> editor, asks <em>you</em> to edit it, reads what you wrote, and questions your understanding using the Socratic method. It never gives you the answer. It makes you earn it.</p>
+
+<p>This post walks through building exactly that. The example I picked — and it really is just one example, chosen to illustrate an approach you could apply to any book or curriculum — is the <strong>Actions, Calculations, Data</strong> distinction from Eric Normand's <em>Grokking Simplicity</em>: the single highest-leverage idea, I think, for writing testable code. So: an <strong>ACD tutor</strong>. A CLI you run in your terminal. It writes a lesson file, pops it open in your editor, and starts asking questions. The full code is on <a href="https://github.com/vishnugopal/acd-tutor/">GitHub</a>, and every snippet below links to the commit it came from.</p>
+
+<p>But before we write any code, we need to get one thing straight — because the word "agent" has gotten slippery.</p>
+
+<h2>An agent used to be a prompt</h2>
+
+<p>Two years ago, if you said "I built an AI agent," what you usually meant was: <em>I wrote a really good system prompt.</em></p>
+
+<pre><code><span class="cm">// "agent", circa 2023</span>
+<span class="kw">const</span> response = <span class="kw">await</span> llm.<span class="fn">complete</span>({
+  system: <span class="str">"You are a Socratic tutor. Never give the answer..."</span>,
+  messages: [{ role: <span class="str">"user"</span>, content: question }],
+});</code></pre>
+
+<p>And honestly? That worked okay. A well-written prompt can shape a model's behavior dramatically. The original <a href="https://github.com/Sharan0516/socratic-tutor"><code>socratic-tutor</code> skill</a> this project started from is exactly that lineage — a markdown file full of carefully-worded rules like:</p>
+
+<blockquote>
+<p><strong>NEVER give the answer. Not directly. Not indirectly. Not by heavily implying it.</strong></p>
+</blockquote>
+
+<aside>
+<span class="aside-title">What's a "skill"?</span>
+<p>If that word is new to you, hold the thought — we'll define skills properly in a moment. For now: a skill is a structured markdown package of expertise that an agent can load.</p>
+</aside>
+
+<p>But a prompt alone has a hard ceiling. It can't open a file in your editor. It can't check whether you actually edited <code>lesson-1.ts</code>. It can't remember that you finished lesson 3 last Tuesday. It produces text, and text is where it ends.</p>
+
+<p>The thing that changed — the thing that makes Claude Code feel categorically different from a chat window — is that an agent today is not a prompt. It's a <strong>harness</strong>.</p>
+
+<h2>The harness: a loop with hands</h2>
+
+<p>Strip away the branding, and every modern agent is the same small machine:</p>
+
+<figure class="diagram">
+  <!-- image file: images/agent-loop.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 270" role="img" aria-label="The agent loop: the model reads context, thinks, emits a tool call to the real world (files, shell, editor, APIs), the result joins the context, and the loop repeats." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <defs>
+      <marker id="arrowPink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#d23669"/>
+      </marker>
+      <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b7a4b"/>
+      </marker>
+    </defs>
+    <rect x="12" y="14" width="312" height="240" rx="14" fill="#fdf7f9" stroke="#d23669" stroke-width="2"/>
+    <text x="36" y="46" font-size="12" font-weight="800" letter-spacing="1.5" fill="#d23669">THE AGENT LOOP</text>
+    <g font-size="13" fill="#333">
+      <circle cx="46" cy="72" r="10" fill="#d23669"/>
+      <text x="46" y="75.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+      <text x="66" y="76.5">Model reads the context</text>
+      <line x1="36" y1="90" x2="300" y2="90" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+      <circle cx="46" cy="108" r="10" fill="#d23669"/>
+      <text x="46" y="111.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+      <text x="66" y="112.5">Model thinks</text>
+      <line x1="36" y1="126" x2="300" y2="126" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+      <circle cx="46" cy="144" r="10" fill="#d23669"/>
+      <text x="46" y="147.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+      <text x="66" y="148.5">Model emits a <tspan font-weight="650" fill="#d23669">tool call</tspan></text>
+      <line x1="36" y1="162" x2="300" y2="162" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+      <circle cx="46" cy="180" r="10" fill="#d23669"/>
+      <text x="46" y="183.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+      <text x="66" y="184.5">Tool result joins the context</text>
+      <line x1="36" y1="198" x2="300" y2="198" stroke="#d23669" stroke-opacity="0.18" stroke-dasharray="3 3"/>
+      <circle cx="46" cy="216" r="10" fill="#c9a227"/>
+      <text x="46" y="219.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+      <text x="66" y="220.5">Back to 1, until done</text>
+    </g>
+    <text x="398" y="96" font-size="11" font-weight="650" fill="#6b6b6b" text-anchor="middle">tool call</text>
+    <line x1="338" y1="110" x2="456" y2="110" stroke="#d23669" stroke-width="2" marker-end="url(#arrowPink)"/>
+    <line x1="456" y1="164" x2="338" y2="164" stroke="#2b7a4b" stroke-width="2" marker-end="url(#arrowGreen)"/>
+    <text x="398" y="188" font-size="11" font-weight="650" fill="#6b6b6b" text-anchor="middle">result</text>
+    <rect x="470" y="14" width="238" height="240" rx="14" fill="#faf9f6" stroke="#b8b2a7" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="494" y="46" font-size="12" font-weight="800" letter-spacing="1.5" fill="#7d7669">THE REAL WORLD</text>
+    <g font-size="13" fill="#333">
+      <text x="494" y="86">📄</text>
+      <text x="522" y="86">read &amp; write files</text>
+      <line x1="494" y1="102" x2="684" y2="102" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+      <text x="494" y="128">⌨️</text>
+      <text x="522" y="128">run shell commands</text>
+      <line x1="494" y1="144" x2="684" y2="144" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+      <text x="494" y="170">✏️</text>
+      <text x="522" y="170">launch your editor</text>
+      <line x1="494" y1="186" x2="684" y2="186" stroke="#e3dfd6" stroke-dasharray="3 3"/>
+      <text x="494" y="212">🌐</text>
+      <text x="522" y="212">call APIs</text>
+    </g>
+  </svg>
+  <figcaption>Every agent you've used — Claude Code included — is this loop.</figcaption>
+</figure>
+
+<p>The model is still just predicting text. But the harness around it watches for a particular kind of text — a <em>tool call</em> — executes it in the real world, and feeds the result back in. Run that in a loop and the model stops being a text generator and starts being something that <em>does things</em>: reads files, edits them, runs commands, checks its own work.</p>
+
+<p>The harness is everything around the model: the loop itself, the tools it exposes, the instructions and skills it loads, the sandbox it executes in, the transport that connects it to a UI. The model provides the judgment; the harness provides the hands, the memory, and the guardrails.</p>
+
+<p>So when we say "build an agent," we really mean: <em>build a harness</em>. You could build all of it yourself — but you don't have to, because this is exactly the layer that <a href="https://www.npmjs.com/package/@flue/cli">Flue</a> provides. Flue is a new agent harness from the same folks who built <a href="https://astro.build">Astro</a>, and it carries the same design sensibility: declarative definitions, file-based conventions, and a build step that turns it all into something deployable. We'll dig into it properly in a minute.</p>
+
+<p>First, though: a harness has three ingredients worth distinguishing carefully, because they look similar and absolutely aren't.</p>
+
+<h2>Prompts, skills, and tools</h2>
+
+<h3>Instructions are identity</h3>
+
+<p>The system prompt — what Flue calls <code>instructions</code> — is the agent's standing identity. Always present, always in context. System prompts aren't necessarily short — production ones can run to pages — but in this case it is: a few sentences. <em>"You are an ACD tutor. On a fresh start, check where the learner left off."</em> Think of it as the job description.</p>
+
+<h3>Skills are knowledge</h3>
+
+<p>A <strong>skill</strong> is a package of expertise — typically a <code>SKILL.md</code> file plus reference documents. It's still "just prompting" in the sense that it's words the model reads, but it's structured, versioned, and <em>progressively loaded</em>: the model sees the skill's name and description up front, and pulls in the full text and references only when relevant.</p>
+
+<p>My tutor's skill looks like this on disk:</p>
+
+<figure class="diagram">
+  <!-- image file: images/skill-tree.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 212" class="tree-svg" role="img" aria-label="Directory tree of src/skills/acd-tutor: SKILL.md (the teaching playbook) and a references folder containing acd-concepts.md (private answer key), exercise-bank.md (lesson source code), and socratic-questions.md (question patterns)." font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+    <rect x="1" y="1" width="658" height="210" rx="10" fill="#f6f4f0" stroke="#e9e5de" stroke-width="2"/>
+    <g font-size="13" fill="#333">
+      <text x="28" y="40">src/skills/acd-tutor/</text>
+      <text x="62" y="68">SKILL.md</text>
+      <text x="62" y="96">references/</text>
+      <text x="96" y="124">acd-concepts.md</text>
+      <text x="96" y="152">exercise-bank.md</text>
+      <text x="96" y="180">socratic-questions.md</text>
+    </g>
+    <g stroke="#8a857c" stroke-width="1.5" fill="none">
+      <path d="M 36 48 V 92"/>
+      <path d="M 36 64 H 54"/>
+      <path d="M 36 92 H 54"/>
+      <path d="M 70 104 V 176"/>
+      <path d="M 70 120 H 88"/>
+      <path d="M 70 148 H 88"/>
+      <path d="M 70 176 H 88"/>
+    </g>
+    <g font-size="12.5" font-style="italic" fill="#9b958c">
+      <text x="330" y="68">← the teaching playbook</text>
+      <text x="330" y="124">← private answer key</text>
+      <text x="330" y="152">← lesson source code</text>
+      <text x="330" y="180">← question patterns</text>
+    </g>
+  </svg>
+</figure>
+
+<p>The <code>SKILL.md</code> encodes the whole pedagogy: the fixed curriculum (lessons walking through chapters 3–5 of the book), the rule to read the lesson file on <em>every single turn</em> in case the learner edited it, the rule to never classify a function for the learner. The references hold the exercises and the answer key the model consults but never reveals.</p>
+
+<p>Crucially, a skill can describe <em>procedures that use tools</em> — "write the exercise into <code>lesson-1.ts</code>, then open it in their editor" — without being a tool itself. It's the recipe, not the knife.</p>
+
+<h3>Tools are capabilities</h3>
+
+<p>A <strong>tool</strong> is the opposite: not words, but code. A typed function the model is allowed to call. It has a name, a schema for its parameters, and a handler that runs in the real world:</p>
+
+<pre><code><span class="fn">defineTool</span>({
+  name: <span class="str">"readFile"</span>,
+  description: <span class="str">"Read a lesson file from the learner's workspace…"</span>,
+  parameters: {
+    type: <span class="str">"object"</span>,
+    properties: { filename: { type: <span class="str">"string"</span> } },
+    required: [<span class="str">"filename"</span>],
+  },
+  execute: <span class="kw">async</span> (args) =&gt;
+    <span class="fn">readFile</span>(<span class="fn">resolve</span>(args.filename), <span class="str">"utf8"</span>).<span class="fn">catch</span>(() =&gt; <span class="str">"FILE_NOT_FOUND"</span>),
+});</code></pre>
+
+<p>The model never sees the implementation — only the name, description, and schema. It decides <em>when</em> to call <code>readFile</code>; your code decides <em>what that actually does</em>. That split is the security model and the design space of the whole field, compressed into one sentence.</p>
+
+<p>Here's the cheat sheet:</p>
+
+<table>
+<thead><tr><th></th><th>What it is</th><th>Changes the model's…</th><th>Example here</th></tr></thead>
+<tbody>
+<tr><td>Instructions</td><td>Standing system prompt</td><td>identity &amp; defaults</td><td>"You are an ACD tutor"</td></tr>
+<tr><td>Skill</td><td>Markdown expertise package</td><td>knowledge &amp; procedure</td><td><code>acd-tutor/SKILL.md</code> + exercise bank</td></tr>
+<tr><td>Tool</td><td>Typed callable function</td><td>capabilities</td><td><code>readFile</code>, <code>writeFile</code>, <code>openFile</code></td></tr>
+</tbody>
+</table>
+
+<p>A useful test: if you deleted it, would the agent become <em>dumber</em> or <em>weaker</em>? Delete the skill and my tutor still has hands but forgets how to teach. Delete the tools and it remembers the whole curriculum but can't touch a single file. You need both, and you should never confuse them.</p>
+
+<aside>
+<span class="aside-title">Why the distinction matters</span>
+<p>When the tutor misbehaves pedagogically — gives a hint too early, skips a lesson — the fix is in <code>SKILL.md</code>. When it misbehaves mechanically — writes to the wrong directory, can't open the editor — the fix is in tool code. Keeping these in separate files means each bug has exactly one home.</p>
+</aside>
+
+<h2>Enter Flue</h2>
+
+<p>You could build the harness yourself — the loop is genuinely not that much code. But there's a lot of supporting machinery around the loop: streaming, conversation state, tool dispatch, sandboxing, serving it over HTTP. That's what <a href="https://www.npmjs.com/package/@flue/cli">Flue</a> (<code>@flue/runtime</code> + <code>@flue/sdk</code> + <code>@flue/cli</code>) handles.</p>
+
+<p>Flue's pitch is that an agent is a <em>declaration</em>, not an application. You describe the harness — model, instructions, skills, tools, sandbox — and Flue compiles it into a server. Here is the entire agent definition for the tutor, very close to how it looked in the <a href="https://github.com/vishnugopal/acd-tutor/commit/0092aae4376c464fed2a788cb21671d5c93114bc">first working commit</a>:</p>
+
+<span class="code-label">src/agents/main.ts</span>
+<pre><code><span class="kw">import</span> { createAgent } <span class="kw">from</span> <span class="str">"@flue/runtime"</span>;
+<span class="kw">import</span> { local } <span class="kw">from</span> <span class="str">"@flue/runtime/node"</span>;
+<span class="kw">import</span> acdTutor <span class="kw">from</span> <span class="str">"../skills/acd-tutor/SKILL.md"</span> <span class="kw">with</span> { type: <span class="str">"skill"</span> };
+
+<span class="kw">export default</span> <span class="fn">createAgent</span>(() =&gt; ({
+  model: <span class="str">"anthropic/claude-sonnet-4-6"</span>,
+  instructions: <span class="str">"You are an ACD tutor…"</span>,
+  skills: [acdTutor],
+  sandbox: <span class="fn">local</span>(),
+  cwd: process.<span class="fn">cwd</span>(),
+}));</code></pre>
+
+<p>Twelve lines, and several of Flue's best ideas are visible in them:</p>
+
+<ul>
+<li><p><strong>Skills are imports.</strong> That <code>with { type: "skill" }</code> import attribute is my favorite line in the codebase. The skill — markdown, references and all — is a first-class module. The bundler resolves it, packages the reference files alongside it, and hands the agent a structured skill object. Your expertise is under version control and participates in the build like any other dependency.</p></li>
+<li><p><strong>The sandbox is explicit.</strong> <code>sandbox: local()</code> gives the agent an execution environment on the host. In this project its main job is to let the skill operate: when <code>SKILL.md</code> says "consult <code>references/exercise-bank.md</code>," the model needs somewhere to read those reference files from — that's the sandbox. (Early on it also ran the tutor's file commands, which turned out to be a mistake; more on that <a href="#tools-and-boundaries">below</a>.) The point is that it's opt-in: Flue makes you choose host access on purpose rather than handing it out by default.</p></li>
+<li><p><strong>Convention over wiring.</strong> Flue scans <code>src/agents/</code> for agent definitions, and within each file the contract is a set of <em>named exports, each well-defined and for a specific purpose</em> — the <code>default</code> export is the agent, and exporting a <code>route</code> middleware opts it into HTTP transport at <code>POST /agents/main/:id</code>. If you've used Next.js — where exporting <code>GET</code> makes a route handler and exporting <code>metadata</code> sets page metadata — this will feel instantly familiar; Flue is clearly picking up a lot of lessons from it. One export, and your agent is a streaming API.</p></li>
+</ul>
+
+<p>Then <code>flue build</code> compiles everything — agent, skill, references, runtime — into a single <code>dist/server.mjs</code>. The agent isn't a script you run; it's a server you talk to. That decision pays off immediately, as we're about to see.</p>
+
+<h2>How this project actually started</h2>
+
+<p>Here's the part I want to be honest about, because it's the most replicable lesson in this whole post: <strong>I didn't start from scratch. I started from a skill.</strong></p>
+
+<p>There was already a <a href="https://github.com/Sharan0516/socratic-tutor"><code>socratic-tutor</code> skill</a> — a general-purpose "never reveal the answer" tutor for kids, written for Claude's skill ecosystem, complete with age tiers and Mermaid diagram patterns. It encoded real pedagogical craft: ask what they already know first, diagram the structure of the problem but never the solution path, calibrate question difficulty to the learner.</p>
+
+<p>The very first <a href="https://github.com/vishnugopal/acd-tutor/commit/c10f0cfe007be3ca193000a437564ec4854dc605">commit of this repo</a> is just three things:</p>
+
+<ol>
+<li>That existing <code>socratic-tutor</code> skill, dropped into <code>src/skills/</code>,</li>
+<li>A 12-line Flue agent definition importing it,</li>
+<li>A single-file CLI loop wrapped around the whole thing.</li>
+</ol>
+
+<p>That's it. That was a working agent — on day one. Because the skill already contained the hard-won knowledge, and Flue already contained the harness machinery, the "build an agent" step collapsed into <em>plugging one into the other</em>.</p>
+
+<p>The CLI loop deserves a look, because it shows what Flue leaves for you to write — pleasantly little. Four steps:</p>
+
+<span class="code-label">the first CLI, condensed</span>
+<pre><code><span class="cm">// 1. Build the agent bundle so edits to agents/ and skills/ get picked up</span>
+Bun.<span class="fn">spawn</span>([<span class="str">"bunx"</span>, <span class="str">"--bun"</span>, <span class="str">"flue"</span>, <span class="str">"build"</span>]);
+
+<span class="cm">// 2. Spawn the compiled Flue server</span>
+<span class="kw">const</span> server = Bun.<span class="fn">spawn</span>([<span class="str">"bun"</span>, <span class="str">"dist/server.mjs"</span>], { env: { PORT: <span class="str">"3789"</span> } });
+
+<span class="cm">// 3. Poll /openapi.json until the server is ready</span>
+
+<span class="cm">// 4. REPL: each line is a streaming invoke via @flue/sdk</span>
+<span class="kw">const</span> client = <span class="fn">createFlueClient</span>({ baseUrl: <span class="str">"http://localhost:3789"</span> });
+<span class="kw">const</span> instanceId = <span class="str">`cli_${</span>crypto.<span class="fn">randomUUID</span>()<span class="str">}`</span>;
+
+<span class="kw">const</span> stream = client.agents.<span class="fn">invoke</span>(<span class="str">"main"</span>, instanceId, {
+  mode: <span class="str">"stream"</span>,  <span class="cm">// SSE under the hood</span>
+  <span class="cm">/* …message payload… */</span>
+});</code></pre>
+
+<p>Two details here matter more than they look:</p>
+
+<p><strong>The instance id is the conversation.</strong> Notice there's no message history being managed in the CLI. You invoke agent <code>"main"</code> with an <code>instanceId</code>, and Flue keeps the conversation state server-side, keyed to that id. The whole "memory" problem — the thing that makes naive LLM wrappers painful — is one UUID. Reuse the id, resume the conversation.</p>
+
+<p><strong>Streaming is the default posture.</strong> <code>mode: "stream"</code> gives you the reply as an async iterable of chunks over SSE. A tutor that thinks for eight seconds and then dumps four paragraphs feels broken; one that starts talking immediately feels alive. Flue makes the right thing the easy thing.</p>
+
+<aside>
+<span class="aside-title">One Flue gotcha</span>
+<p>Flue reserves <code>src/app.ts</code> for a user-supplied Hono app — put arbitrary code there and the build fails with a confusing error. The CLI therefore lives at <code>src/main.ts</code>. You will hit this; now you won't be confused by it.</p>
+</aside>
+
+<h2>From socratic-tutor to acd-tutor</h2>
+
+<p>The generic skill proved the plumbing, but it wasn't <em>my</em> tutor. So the next few commits did the second most instructive thing in the repo: <strong><a href="https://github.com/vishnugopal/acd-tutor/pull/4">forked the skill</a></strong>.</p>
+
+<p>The new <code>acd-tutor</code> skill kept the Socratic spine — never reveal, always question — and replaced everything generic with something opinionated:</p>
+
+<ul>
+<li>A <strong>fixed learner</strong> (a novice JS/TS programmer; no profile questions, no age tiers) and a <strong>fixed curriculum</strong> (lessons walking from "spot the action" to "extract the calculation out of the action"),</li>
+<li>An <strong>exercise bank</strong> of real TypeScript files the tutor writes into your scratch directory,</li>
+<li>A <strong>two-channel protocol</strong>: every turn, the tutor re-reads the current lesson file <em>before</em> reading your chat message. If you edited the file, the edit is your answer; chat is commentary. This is the move that makes it feel like Claude Code rather than a chatbot — the filesystem is part of the conversation,</li>
+<li><strong>Your editor, not mine.</strong> One thing that has always annoyed me about coding tutors is the artificial dev environment — the embedded web editor with no vim keys, no extensions, none of your muscle memory. Here the lesson file just opens in <code>$EDITOR</code>. Whatever you already use — Zed, VS Code, vim — that's where you edit. The tutor adapts to your environment instead of imposing one,</li>
+<li><strong>Resumability</strong>: on a fresh start, the tutor lists the lesson files, reads the highest-numbered one, compares it against the exercise bank's "done when" criteria, and picks up exactly where you left off. The scratch directory <em>is</em> the progress database.</li>
+</ul>
+
+<p>And notice where all of that lives: in markdown. The agent definition barely changed. The CLI didn't change at all. When the unit of iteration is a skill file, iterating on <em>behavior</em> stops requiring you to touch <em>infrastructure</em> — which is precisely the property you want when you're tuning pedagogy, because you'll be tuning it constantly. It also means you don't have to understand any other part of the harness to change the lesson plan: <a href="https://github.com/vishnugopal/acd-tutor/pull/6">a later commit</a> expanded the curriculum to seven lessons by editing exactly two markdown files — no TypeScript touched.</p>
+
+<p>At this point — a handful of commits in — the whole system looks like this:</p>
+
+<figure class="diagram">
+  <!-- image file: images/architecture-stack.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 470" class="stack-svg" role="img" aria-label="Architecture: you type in a terminal and edit lesson files; the CLI (src/main.ts) talks over HTTP to the Flue server hosting agent 'main' with instructions, the acd-tutor skill, and a local sandbox; the agent writes lessons into the workspace and opens your editor." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <rect x="50" y="10" width="460" height="58" rx="10" fill="#fbfaf8" stroke="#e9e5de" stroke-width="1.5"/>
+    <text x="280" y="32" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">YOU</text>
+    <text x="280" y="52" font-size="13" fill="#1a1a1a" text-anchor="middle">type in a terminal · edit <tspan font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11.5" fill="#ad2955">lesson-N.ts</tspan> in your editor</text>
+    <text x="280" y="89" font-size="16" fill="#d23669" text-anchor="middle">↓</text>
+    <text x="280" y="103" font-size="10.5" fill="#6b6b6b" text-anchor="middle">readline REPL</text>
+    <rect x="50" y="112" width="460" height="70" rx="10" fill="#fbfaf8" stroke="#e9e5de" stroke-width="1.5"/>
+    <text x="280" y="134" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">CLI</text>
+    <text x="280" y="153" font-size="12" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">src/main.ts</text>
+    <text x="280" y="171" font-size="11" fill="#6b6b6b" text-anchor="middle">@flue/sdk · SSE streaming · one instance id</text>
+    <text x="280" y="203" font-size="16" fill="#d23669" text-anchor="middle">↓</text>
+    <text x="280" y="217" font-size="10.5" fill="#6b6b6b" text-anchor="middle">HTTP · POST /agents/main/:id</text>
+    <rect x="50" y="226" width="460" height="104" rx="10" fill="#fdf7f9" stroke="#d23669" stroke-width="2"/>
+    <text x="280" y="250" font-size="10" font-weight="700" letter-spacing="1.2" fill="#d23669" text-anchor="middle">FLUE SERVER</text>
+    <text x="280" y="271" font-size="13" fill="#1a1a1a" text-anchor="middle">agent <tspan font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11.5" fill="#ad2955">"main"</tspan></text>
+    <g font-size="9.5" fill="#555">
+      <rect x="60" y="288" width="138" height="22" rx="11" fill="#ffffff" stroke="#e9e5de"/>
+      <text x="129" y="302.5" text-anchor="middle">instructions — identity</text>
+      <rect x="206" y="288" width="152" height="22" rx="11" fill="#ffffff" stroke="#e9e5de"/>
+      <text x="282" y="302.5" text-anchor="middle">acd-tutor skill — pedagogy</text>
+      <rect x="366" y="288" width="136" height="22" rx="11" fill="#ffffff" stroke="#e9e5de"/>
+      <text x="434" y="302.5" text-anchor="middle">local() sandbox — hands</text>
+    </g>
+    <text x="280" y="351" font-size="16" fill="#d23669" text-anchor="middle">↓</text>
+    <text x="280" y="365" font-size="10.5" fill="#6b6b6b" text-anchor="middle">writes lessons · opens $EDITOR</text>
+    <rect x="50" y="374" width="460" height="76" rx="10" fill="#fbfaf8" stroke="#e9e5de" stroke-width="1.5"/>
+    <text x="280" y="396" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">WORKSPACE</text>
+    <text x="280" y="416" font-size="12" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">/tmp/acd-tutor/scratch/lesson-1.ts</text>
+    <text x="280" y="436" font-size="11" fill="#6b6b6b" text-anchor="middle">← you edit this; your edits are your answers</text>
+  </svg>
+  <figcaption>The whole system after the first few commits.</figcaption>
+</figure>
+
+<p>You run <code>bun start</code>, the tutor writes <code>lesson-1.ts</code>, your editor pops open, and a voice in the terminal asks: <em>"Look at <code>processOrder</code> — if you had to call it an action, a calculation, or data… which is it, and what's your gut reason?"</em></p>
+
+<p>It works. It's also rough in three specific ways, and fixing them is the rest of this post.</p>
+
+<h2 id="tools-and-boundaries">Tools and boundaries</h2>
+
+<p>The first rough edge showed up immediately, as the best bugs do, in the most mundane way: <strong>the tutor wouldn't open my editor.</strong></p>
+
+<p>In the early version, the skill did its file work through shell commands in the sandbox — <code>${EDITOR:-zed} lesson-1.ts &amp;</code> and the like. But Flue's <code>local()</code> sandbox only exposes an explicit allowlist of environment variables, and <code>$EDITOR</code> isn't on it. The skill's fallback silently kicked in, and the wrong editor opened every time. The <a href="https://github.com/vishnugopal/acd-tutor/commit/740481e">first fix</a> was the obvious one — forward the variable:</p>
+
+<pre><code>sandbox: <span class="fn">local</span>({ env: { EDITOR: process.env.EDITOR } }),</code></pre>
+
+<p>That worked. But it's a smell, and it's worth pausing on why: the <em>pedagogy file</em> now depended on a <em>host environment variable</em>, threaded through a sandbox allowlist, invoked via shell string interpolation written in markdown. Three layers of the system had quietly fused. The skill knew where files lived, which editor command to run, and how to background a process in bash. None of that is teaching knowledge.</p>
+
+<p>So the <a href="https://github.com/vishnugopal/acd-tutor/pull/5">real fix</a> was to move file operations out of the sandbox entirely and into <strong>host-side tools</strong> — proper <code>defineTool</code> definitions that run in the server process:</p>
+
+<span class="code-label">src/tools.ts</span>
+<pre><code><span class="cm">// basename() blocks path traversal — "../x" and "/etc/x" both become leaf names.</span>
+<span class="kw">const</span> resolve = (filename) =&gt; <span class="fn">join</span>(opts.scratchDir, <span class="fn">basename</span>(filename));
+
+<span class="fn">defineTool</span>({
+  name: <span class="str">"openFile"</span>,
+  <span class="cm">/* …schema… */</span>
+  execute: <span class="kw">async</span> (args) =&gt; {
+    <span class="kw">const</span> editor = opts.editor ?? process.env.EDITOR ?? <span class="str">"open"</span>;
+    <span class="cm">// shell:true handles multi-word commands like "zed -w"; detached +</span>
+    <span class="cm">// unref so a waiting editor never blocks the server process.</span>
+    <span class="fn">spawn</span>(<span class="str">`${editor} ${</span>JSON.<span class="fn">stringify</span>(path)<span class="str">}`</span>, {
+      shell: <span class="kw">true</span>, detached: <span class="kw">true</span>, stdio: <span class="str">"ignore"</span>,
+    }).<span class="fn">unref</span>();
+    <span class="kw">return</span> <span class="str">`Opened ${</span><span class="fn">basename</span>(args.filename)<span class="str">} in the learner's editor`</span>;
+  },
+});</code></pre>
+
+<p>Four tools — <code>listFiles</code>, <code>readFile</code>, <code>writeFile</code>, <code>openFile</code> — and a design rule that I think is the most important idea in this section: <strong>the model addresses files by bare filename, and never learns where they live.</strong></p>
+
+<p>The model says <code>readFile("lesson-1.ts")</code>. The host resolves that to a real path inside the scratch directory. This is simultaneously:</p>
+
+<ul>
+<li><strong>A security boundary.</strong> The <code>basename()</code> in <code>resolve</code> means <code>../../etc/passwd</code> and <code>/etc/passwd</code> both collapse to harmless leaf names. The model physically cannot escape the workspace, no matter what it generates. One line.</li>
+<li><strong>Better UX for the model.</strong> Tool calls get shorter and harder to get wrong. The agent instructions shrink from path-management choreography to one sentence: <em>"Manage lesson files with listFiles/readFile/writeFile/openFile, addressing files by bare filename."</em></li>
+<li><strong>A cleaner skill.</strong> All the bash incantations disappeared from <code>SKILL.md</code>. The pedagogy file went back to being about pedagogy.</li>
+</ul>
+
+<p>And the <code>$EDITOR</code> hack? Deleted. The <code>openFile</code> tool runs on the host, where <code>process.env.EDITOR</code> just… exists. The sandbox went back to plain <code>local()</code>, doing the one job it's actually good at here: letting the skill read its reference files.</p>
+
+<p>This is the prompts-vs-tools distinction from earlier, paying rent. Where a capability <em>lives</em> determines what can go wrong with it.</p>
+
+<h2>Refactoring into layers</h2>
+
+<p>The second rough edge: the entire CLI — server spawning, readiness polling, signal handling, REPL, rendering — lived in one 136-line file. Fine for day one; a liability the moment you want to change anything. <a href="https://github.com/vishnugopal/acd-tutor/pull/1">One refactor</a> split it into five layers, and the split has survived every change since:</p>
+
+<ol>
+<li><strong>Agent definition</strong> — <code>src/agents/main.ts</code>: the Flue declaration. Tutor behavior lives in the skill, not here.</li>
+<li><strong>Server runner</strong> — <code>src/runner.ts</code>: generic <code>startFlueServer()</code> — builds, spawns <code>dist/server.mjs</code>, polls until ready, owns shutdown. Knows nothing about tutoring.</li>
+<li><strong>Agent I/O</strong> — <code>src/agent-io.ts</code>: <code>createAgentSession(client, agent)</code> — pins an agent + instance id and exposes <code>send(payload)</code> as an async iterable of chunks. Transport only. No printing.</li>
+<li><strong>Console frontend</strong> — the REPL loop and rendering. Knows nothing about Flue <em>or</em> the tutor; its reply source is a caller-supplied <code>reply(line): AsyncIterable</code>.</li>
+<li><strong>CLI entry</strong> — <code>src/main.ts</code>: composition only. Start server, create session, run console with the tutor-specific greeting strings.</li>
+</ol>
+
+<p>Layers 2–4 are deliberately tutor-agnostic. The payoff isn't aesthetic: it means a future web frontend reuses everything but layer 4, and — as we're about to see — replacing the console UI wholesale touched nothing else.</p>
+
+<h2>A real terminal UI</h2>
+
+<p>The third rough edge was the experience itself. Raw <code>readline</code> does no justice to a streaming tutor: markdown arrives as literal asterisks, there's no visual separation between you and the agent, and while a reply streams, your keystrokes go nowhere.</p>
+
+<p>So <a href="https://github.com/vishnugopal/acd-tutor/pull/7">the console became an Ink app</a> — yes, React in the terminal, and the same UI library Claude Code itself is built with:</p>
+
+<figure class="diagram">
+  <!-- image file: images/console-tree.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 240" class="tree-svg" role="img" aria-label="Directory tree of src/console: index.tsx (runConsole, mounts the app), App.tsx (state machine: transcript, streaming, queue), Transcript.tsx (scrollback of turns), Markdown.tsx (marked plus marked-terminal rendering), InputBar.tsx (prompt, hints, slash commands), TextInput.tsx (cursor movement, editing keys)." font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+    <rect x="1" y="1" width="678" height="238" rx="10" fill="#f6f4f0" stroke="#e9e5de" stroke-width="2"/>
+    <g font-size="13" fill="#333">
+      <text x="28" y="40">src/console/</text>
+      <text x="62" y="68">index.tsx</text>
+      <text x="62" y="96">App.tsx</text>
+      <text x="62" y="124">Transcript.tsx</text>
+      <text x="62" y="152">Markdown.tsx</text>
+      <text x="62" y="180">InputBar.tsx</text>
+      <text x="62" y="208">TextInput.tsx</text>
+    </g>
+    <g stroke="#8a857c" stroke-width="1.5" fill="none">
+      <path d="M 36 48 V 204"/>
+      <path d="M 36 64 H 54"/>
+      <path d="M 36 92 H 54"/>
+      <path d="M 36 120 H 54"/>
+      <path d="M 36 148 H 54"/>
+      <path d="M 36 176 H 54"/>
+      <path d="M 36 204 H 54"/>
+    </g>
+    <g font-size="12.5" font-style="italic" fill="#9b958c">
+      <text x="210" y="68">← runConsole(): mounts the app</text>
+      <text x="210" y="96">← state machine: transcript, streaming, queue</text>
+      <text x="210" y="124">← scrollback of turns</text>
+      <text x="210" y="152">← marked + marked-terminal rendering</text>
+      <text x="210" y="180">← prompt, hints, slash commands</text>
+      <text x="210" y="208">← cursor movement, editing keys</text>
+    </g>
+  </svg>
+</figure>
+
+<p>Because of the layering, this rewrite — readline to React — changed <em>one</em> import in <code>src/main.ts</code>. The agent, the tools, the skill, the runner: untouched. Three details from this phase are worth stealing:</p>
+
+<p><strong>Streamed markdown, rendered live.</strong> Chunks accumulate into the current turn and re-render through <code>marked-terminal</code> on every update — so headings, bold, and code blocks appear styled <em>as they stream</em>, not after.</p>
+
+<p><strong>A debug mode that shows the loop.</strong> <a href="https://github.com/vishnugopal/acd-tutor/pull/8">A <code>/debug</code> toggle</a> surfaces what the harness is actually doing. The agent-I/O layer formats every Flue event — tool calls, turns, token usage — into one-line diagnostics:</p>
+
+<pre><code>→ readFile({"filename":"lesson-2.ts"})
+← readFile ok in 3ms: // Lesson 2 — annotate each line…
+turn anthropic/claude-sonnet-4-6 stop=end_turn tokens=8211/342 cache=7902r/0w in 6120ms</code></pre>
+
+<p>Remember the loop diagram from the top of this post? Debug mode is that diagram, live. Watching your agent <em>read the lesson file before answering</em> — exactly as the skill instructs — is the moment the architecture stops being abstract. It's also how you catch it when it doesn't.</p>
+
+<p><strong>Queueing instead of locking.</strong> The first Ink version disabled input while a reply streamed. <a href="https://github.com/vishnugopal/acd-tutor/pull/9">The fix</a>: keep input live, queue submissions, and send each one as the previous reply finishes — while slash commands like <code>/debug</code> execute immediately. Claude Code behaves the same way, and once you've felt it, a locked input feels broken.</p>
+
+<h2>Tuning the teacher</h2>
+
+<p>With the machinery settled, the work shifted to where it should be: the skill. <a href="https://github.com/vishnugopal/acd-tutor/pull/6">Expanding the curriculum to seven lessons</a> — including a gentler lesson 0 — meant editing the exercise bank and the answer key. Markdown only. The harness didn't know anything happened.</p>
+
+<p>That's the end state I'd encourage you to aim for with your own agent: a system where the <em>infrastructure changes rarely</em> and the <em>knowledge changes constantly</em>, and the two never block each other. The commit history of this repo tells that story plainly — TypeScript commits cluster early, markdown commits keep going.</p>
+
+<h2>Closing thoughts</h2>
+
+<p>Step back and look at what got built, and how little of it is "AI code":</p>
+
+<ul>
+<li>A <strong>skill</strong> holds the pedagogy — forked from <a href="https://github.com/Sharan0516/socratic-tutor">an existing one</a>, tuned endlessly, all markdown.</li>
+<li>Four small <strong>tools</strong> hold the capabilities — with the host/model boundary doing double duty as a security model.</li>
+<li><strong>Flue</strong> holds the loop, the streaming, the conversation state, and the build.</li>
+<li>A thin, layered <strong>CLI</strong> holds the experience.</li>
+</ul>
+
+<p>Food for thought: given that layering, how hard would it be to add a <em>web UI</em> to this? The agent is already an HTTP server speaking SSE; the console is just one consumer of an <code>AsyncIterable</code> of chunks. A browser frontend would reuse layers 1–3 untouched and swap only the rendering. I suspect it's a weekend — try it and tell me.</p>
+
+<p>The recipe generalizes well beyond a programming tutor. Pick a book you love. Distill its curriculum into a skill — exercises, answer key, question patterns. Give the agent just enough tools to put real artifacts in front of the learner in <em>their</em> environment. Wrap a loop around it. The ever-patient teacher, it turns out, is mostly a markdown file with hands.</p>
+
+<p>The full source — every commit referenced in this post — is at <a href="https://github.com/vishnugopal/acd-tutor/">github.com/vishnugopal/acd-tutor</a>.</p>
+
+<footer class="site">
+<p><em>How to Build a CLI Agent Using Flue.</em> The code is a real, running project — every snippet above is from its git history.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

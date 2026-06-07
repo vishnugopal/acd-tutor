@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 212" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+  <rect x="1" y="1" width="658" height="210" rx="10" fill="#f6f4f0" stroke="#e9e5de" stroke-width="2"/>
+  <g font-size="13" fill="#333">
+    <text x="28" y="40">src/skills/acd-tutor/</text>
+    <text x="62" y="68">SKILL.md</text>
+    <text x="62" y="96">references/</text>
+    <text x="96" y="124">acd-concepts.md</text>
+    <text x="96" y="152">exercise-bank.md</text>
+    <text x="96" y="180">socratic-questions.md</text>
+  </g>
+  <g stroke="#8a857c" stroke-width="1.5" fill="none">
+    <path d="M 36 48 V 92"/>
+    <path d="M 36 64 H 54"/>
+    <path d="M 36 92 H 54"/>
+    <path d="M 70 104 V 176"/>
+    <path d="M 70 120 H 88"/>
+    <path d="M 70 148 H 88"/>
+    <path d="M 70 176 H 88"/>
+  </g>
+  <g font-size="12.5" font-style="italic" fill="#9b958c">
+    <text x="330" y="68">← the teaching playbook</text>
+    <text x="330" y="124">← private answer key</text>
+    <text x="330" y="152">← lesson source code</text>
+    <text x="330" y="180">← question patterns</text>
+  </g>
+</svg>
