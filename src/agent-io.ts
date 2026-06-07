@@ -1,4 +1,4 @@
-import type { DirectAgentPayload, FlueClient } from "@flue/sdk";
+import type { DirectAgentPayload, FlueClient, FlueEvent } from "@flue/sdk";
 
 /** One streamed chunk of an agent reply. */
 export type AgentChunk =
@@ -27,23 +27,17 @@ function truncate(value: unknown): string {
  * that are noise (message bookkeeping, deltas — text deltas are the reply
  * itself and are yielded as `text` chunks instead).
  */
-function formatDebugEvent(event: {
-  type: string;
-  [key: string]: unknown;
-}): string | null {
+function formatDebugEvent(event: FlueEvent): string | null {
   switch (event.type) {
     case "tool_start":
       return `→ ${event.toolName}(${truncate(event.args)})`;
     case "tool_call":
       return `← ${event.toolName} ${event.isError ? "ERROR" : "ok"} in ${event.durationMs}ms: ${truncate(event.result)}`;
     case "thinking_end":
-      return `thinking (${String(event.content ?? "").length} chars)`;
+      return `thinking (${event.content.length} chars)`;
     case "turn": {
-      const usage = event.usage as
-        | { inputTokens?: number; outputTokens?: number }
-        | undefined;
-      const tokens = usage
-        ? ` tokens=${usage.inputTokens ?? "?"}/${usage.outputTokens ?? "?"}`
+      const tokens = event.usage
+        ? ` tokens=${event.usage.input}/${event.usage.output} cache=${event.usage.cacheRead}r/${event.usage.cacheWrite}w`
         : "";
       const error = event.isError ? ` ERROR: ${truncate(event.error)}` : "";
       return `turn ${event.model ?? "?"} stop=${event.stopReason ?? "?"}${tokens} in ${event.durationMs}ms${error}`;

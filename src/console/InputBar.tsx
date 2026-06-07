@@ -7,11 +7,9 @@ const PROMPT_INPUT_ID = "prompt-input";
 
 function ActionButton({
   action,
-  busy,
   onPress,
 }: {
   action: ConsoleAction;
-  busy: boolean;
   onPress: () => void;
 }) {
   const { isFocused } = useFocus();
@@ -19,7 +17,7 @@ function ActionButton({
     (_input, key) => {
       if (key.return) onPress();
     },
-    { isActive: isFocused && !busy },
+    { isActive: isFocused },
   );
   return (
     <Box
@@ -34,17 +32,11 @@ function ActionButton({
   );
 }
 
-function PromptInput({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (line: string) => void;
-}) {
+function PromptInput({ onSubmit }: { onSubmit: (line: string) => void }) {
   const { isFocused } = useFocus({ autoFocus: true, id: PROMPT_INPUT_ID });
   const [value, setValue] = useState("");
   const submit = (line: string) => {
-    if (busy || !line.trim()) return;
+    if (!line.trim()) return;
     setValue("");
     onSubmit(line.trim());
   };
@@ -67,15 +59,13 @@ function PromptInput({
 }
 
 export interface InputBarProps {
-  /** A reply is streaming; submits and button presses are ignored while true. */
-  busy: boolean;
   actions: ConsoleAction[];
   onSubmit: (line: string) => void;
   onAction: (action: ConsoleAction) => void;
 }
 
 /** Action buttons plus the bordered typing area, pinned below the transcript. */
-export function InputBar({ busy, actions, onSubmit, onAction }: InputBarProps) {
+export function InputBar({ actions, onSubmit, onAction }: InputBarProps) {
   const { focus } = useFocusManager();
   // Pressing a button hands focus back to the input so typing can resume.
   const pressAction = (action: ConsoleAction) => {
@@ -89,7 +79,7 @@ export function InputBar({ busy, actions, onSubmit, onAction }: InputBarProps) {
     (input, key) => {
       if (key.ctrl && input === "g" && actions[0]) pressAction(actions[0]);
     },
-    { isActive: !busy && actions.length > 0 },
+    { isActive: actions.length > 0 },
   );
 
   return (
@@ -100,14 +90,13 @@ export function InputBar({ busy, actions, onSubmit, onAction }: InputBarProps) {
             <ActionButton
               key={action.label}
               action={action}
-              busy={busy}
               onPress={() => pressAction(action)}
             />
           ))}
           <Text dimColor> ctrl+g · tab to focus, enter to press</Text>
         </Box>
       )}
-      <PromptInput busy={busy} onSubmit={onSubmit} />
+      <PromptInput onSubmit={onSubmit} />
       <Text dimColor> /exit or ctrl+c to quit · /debug toggles debug</Text>
     </Box>
   );
