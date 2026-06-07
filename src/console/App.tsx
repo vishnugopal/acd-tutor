@@ -1,5 +1,5 @@
 import { Box, useApp } from "ink";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InputBar } from "./InputBar";
 import { Transcript } from "./Transcript";
 import type { ConsoleAction, Message, ReplyChunk } from "./types";
@@ -40,14 +40,16 @@ export function App({
     greeting === undefined ? [] : [{ role: "info", text: greeting }],
   );
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [queued, setQueued] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState(false);
+  // Read inside the streaming loop so /debug toggles apply mid-reply.
+  const debugModeRef = useRef(debugMode);
   const busy = streamingText !== null;
 
   const append = (message: Message) =>
     setMessages((prev) => [...prev, message]);
 
   const send = async (line: string) => {
-    if (busy) return;
     append({ role: "user", text: line });
     setStreamingText(""); // "" renders the thinking indicator
     let text = "";
@@ -65,7 +67,7 @@ export function App({
       for await (const raw of reply(line)) {
         const chunk = formatAgentChunkToReplyChunk(raw);
         if (chunk.kind === "debug") {
-          if (!debugMode) continue;
+          if (!debugModeRef.current) continue;
           flushText();
           append({ role: "debug", text: chunk.text });
           continue;
@@ -82,6 +84,18 @@ export function App({
     }
   };
 
+  // Pump: send the next queued line as soon as the current reply finishes.
+  // All input goes through the queue, so messages submitted while the agent
+  // is responding are delivered in order instead of being dropped.
+  useEffect(() => {
+    if (busy || queued.length === 0) return;
+    const [next, ...rest] = queued;
+    setQueued(rest);
+    void send(next!);
+  }, [busy, queued]);
+
+  // Slash commands act immediately, even while a reply is streaming;
+  // everything else is queued.
   const handleSubmit = (line: string) => {
     if (line === "/exit") {
       exit();
@@ -90,10 +104,11 @@ export function App({
     if (line === "/debug") {
       const next = !debugMode;
       setDebugMode(next);
+      debugModeRef.current = next;
       append({ role: "info", text: `Debug mode ${next ? "on" : "off"}.` });
       return;
     }
-    void send(line);
+    setQueued((prev) => [...prev, line]);
   };
 
   return (
@@ -101,13 +116,13 @@ export function App({
       <Transcript
         messages={messages}
         streamingText={streamingText}
+        queued={queued}
         thinkingIndicator={thinkingIndicator}
       />
       <InputBar
-        busy={busy}
         actions={actions}
         onSubmit={handleSubmit}
-        onAction={(action) => void send(action.message)}
+        onAction={(action) => handleSubmit(action.message)}
       />
     </Box>
   );

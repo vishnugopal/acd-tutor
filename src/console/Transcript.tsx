@@ -46,6 +46,8 @@ export interface TranscriptProps {
   messages: Message[];
   /** In-flight tutor reply; `""` means waiting for the first chunk, `null` means idle. */
   streamingText: string | null;
+  /** Lines submitted while a reply was streaming, waiting to be sent. */
+  queued: string[];
   thinkingIndicator: string;
 }
 
@@ -53,6 +55,7 @@ export interface TranscriptProps {
 export function Transcript({
   messages,
   streamingText,
+  queued,
   thinkingIndicator,
 }: TranscriptProps) {
   return (
@@ -69,6 +72,11 @@ export function Transcript({
           )}
         </Box>
       )}
+      {queued.map((line, index) => (
+        <Box key={index}>
+          <Text dimColor>{`(queued) › ${line}`}</Text>
+        </Box>
+      ))}
     </>
   );
 }
