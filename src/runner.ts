@@ -62,7 +62,15 @@ export async function startFlueServer(
     server.kill("SIGTERM");
     process.exit(code);
   }
+  // Kill the server on every way out: signals (Ctrl+C, kill, terminal/pty
+  // closing) and any process.exit — otherwise it orphans and holds the port.
   process.on("SIGINT", () => shutdown(0));
+  process.on("SIGTERM", () => shutdown(0));
+  process.on("SIGHUP", () => shutdown(0));
+  process.on("exit", () => {
+    shuttingDown = true;
+    server.kill("SIGTERM");
+  });
   server.exited.then((code) => {
     if (!shuttingDown) {
       console.error(`\nFlue server exited unexpectedly (code ${code}).`);
