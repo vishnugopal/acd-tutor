@@ -48,28 +48,18 @@ export interface TranscriptProps {
   streamingText: string | null;
   /** Lines submitted while a reply was streaming, waiting to be sent. */
   queued: string[];
-  thinkingIndicator: string;
 }
 
 /** Conversation history plus the live (still streaming) reply. */
-export function Transcript({
-  messages,
-  streamingText,
-  queued,
-  thinkingIndicator,
-}: TranscriptProps) {
+export function Transcript({ messages, streamingText, queued }: TranscriptProps) {
   return (
     <>
       <Static items={messages}>
         {(message, index) => <MessageView key={index} message={message} />}
       </Static>
-      {streamingText !== null && (
+      {!!streamingText && (
         <Box marginBottom={1}>
-          {streamingText === "" ? (
-            <Text dimColor>{thinkingIndicator}</Text>
-          ) : (
-            <Markdown>{streamingText}</Markdown>
-          )}
+          <Markdown>{streamingText}</Markdown>
         </Box>
       )}
       {queued.map((line, index) => (

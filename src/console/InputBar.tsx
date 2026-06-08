@@ -1,5 +1,6 @@
 import { Box, Text, useFocus, useFocusManager, useInput } from "ink";
 import { useState } from "react";
+import { Spinner } from "./Spinner";
 import { TextInput } from "./TextInput";
 import type { ConsoleAction } from "./types";
 
@@ -60,12 +61,21 @@ function PromptInput({ onSubmit }: { onSubmit: (line: string) => void }) {
 
 export interface InputBarProps {
   actions: ConsoleAction[];
+  /** True while a reply is in flight (thinking, running tools, or streaming). */
+  busy: boolean;
+  thinkingIndicator: string;
   onSubmit: (line: string) => void;
   onAction: (action: ConsoleAction) => void;
 }
 
 /** Action buttons plus the bordered typing area, pinned below the transcript. */
-export function InputBar({ actions, onSubmit, onAction }: InputBarProps) {
+export function InputBar({
+  actions,
+  busy,
+  thinkingIndicator,
+  onSubmit,
+  onAction,
+}: InputBarProps) {
   const { focus } = useFocusManager();
   // Pressing a button hands focus back to the input so typing can resume.
   const pressAction = (action: ConsoleAction) => {
@@ -84,6 +94,11 @@ export function InputBar({ actions, onSubmit, onAction }: InputBarProps) {
 
   return (
     <Box flexDirection="column">
+      {busy && (
+        <Box>
+          <Spinner label={thinkingIndicator} />
+        </Box>
+      )}
       {actions.length > 0 && (
         <Box alignItems="center">
           {actions.map((action) => (

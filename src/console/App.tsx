@@ -117,10 +117,11 @@ export function App({
         messages={messages}
         streamingText={streamingText}
         queued={queued}
-        thinkingIndicator={thinkingIndicator}
       />
       <InputBar
         actions={actions}
+        busy={busy}
+        thinkingIndicator={thinkingIndicator}
         onSubmit={handleSubmit}
         onAction={(action) => handleSubmit(action.message)}
       />
