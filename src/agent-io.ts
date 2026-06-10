@@ -86,3 +86,7 @@ export function createAgentSession(
     },
   };
 }
+
+/** Test-only access to module-private pure helpers. Undefined outside `bun test`. */
+export const __test__ =
+  process.env.NODE_ENV === "test" ? { truncate, formatDebugEvent } : undefined;

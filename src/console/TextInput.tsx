@@ -61,7 +61,9 @@ export function TextInput({
       // Arrow keys: plain = char move, alt/ctrl-modified = word move.
       const byWord = key.meta || key.ctrl;
       if (key.leftArrow) {
-        setRawCursor(byWord ? wordStart(value, cursor) : Math.max(0, cursor - 1));
+        setRawCursor(
+          byWord ? wordStart(value, cursor) : Math.max(0, cursor - 1),
+        );
         return;
       }
       if (key.rightArrow) {
@@ -167,3 +169,7 @@ export function TextInput({
     </Text>
   );
 }
+
+/** Test-only access to module-private pure helpers. Undefined outside `bun test`. */
+export const __test__ =
+  process.env.NODE_ENV === "test" ? { wordStart, wordEnd } : undefined;
