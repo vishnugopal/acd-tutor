@@ -40,7 +40,8 @@ unit tests — each function in isolation. Shared test helpers live in
   (`test/support/faux-tutor.ts`), no Anthropic key needed. The faux agent is its
   own Flue project (`test/e2e/agents/` + `test/e2e/flue.config.ts`), built with
   that config into `test/e2e/dist/`, so it never enters the production build —
-  `flue build` at the repo root sees only `src/agents/main.ts`.
+  `flue build` at the repo root sees only `src/agents/acd-tutor.ts` and
+  `src/agents/socratic-tutor.ts`.
 
 **When you change code, run `bun test` and add or update the matching test
 before considering the work done.** Touching the streaming/tool path? Re-run
@@ -48,13 +49,14 @@ before considering the work done.** Touching the streaming/tool path? Re-run
 
 ## Architecture
 
-A CLI Socratic tutor built on [Flue](https://www.npmjs.com/package/@flue/cli) (agent framework, `@flue/runtime` + `@flue/sdk` + `@flue/cli` v0.9.x). Five layers — 2–4 are generic and tutor-agnostic so other frontends (e.g. a future web app) can reuse them:
+A CLI tutor built on [Flue](https://www.npmjs.com/package/@flue/cli) (agent framework, `@flue/runtime` + `@flue/sdk` + `@flue/cli` v0.9.x). Ships two interchangeable agents — `acd-tutor` and `socratic-tutor` — and the console offers a startup picker between them. Six layers — 2–4 are generic and agent-agnostic so other frontends (e.g. a future web app) can reuse them:
 
-1. **Agent definition** — `src/agents/main.ts`: `createAgent()` with model `anthropic/claude-sonnet-4-6` and the skill imported via Flue's `import ... with { type: "skill" }` from `src/skills/socratic-tutor/SKILL.md`. The exported `route` middleware opts the agent into HTTP transport at `POST /agents/main/:id`. Tutor behavior changes belong in the SKILL.md, not the CLI.
-2. **Server runner** — `src/runner.ts`: generic, agent-agnostic `startFlueServer()` — runs `flue build`, spawns `dist/server.mjs` with `PORT`, polls `/openapi.json` until ready, owns SIGINT/crash/shutdown handling. Returns `{ baseUrl, client, shutdown }`.
-3. **Agent I/O** — `src/agent-io.ts`: generic, transport-only `createAgentSession(client, agent, instanceId?)` — pins an agent + conversation instance and exposes `send(payload): AsyncIterable<string>`, yielding only the reply's text chunks from the SDK's streaming invoke (SSE). Conversation memory is server-side, keyed by the instance id. No printing or prompting here.
-4. **Console frontend** — `src/console.ts`: generic streaming REPL `runConsole(options)` — readline loop, streamed-output rendering, thinking indicator, error display. Knows nothing about the tutor or Flue; the reply source is a caller-supplied `reply(line): AsyncIterable<string>`, and all user-facing strings (greeting, farewell, empty-reply message, indicator, error format) are options.
-5. **CLI entry** — `src/main.ts`: composition only — starts the server, creates an `AgentSession` for agent `"main"`, and runs the console with the tutor-specific strings.
+1. **Agent definitions** — `src/agents/acd-tutor.ts` and `src/agents/socratic-tutor.ts`: each `createAgent()` with model `anthropic/claude-sonnet-4-6`, a `local()` sandbox, and a `profile` from `src/agents/profiles/`. The exported `route` middleware opts each agent into HTTP transport at `POST /agents/<name>/:id`. Flue discovers them by filename (one agent per top-level `.ts` file in `src/agents/`; subdirectories like `profiles/` are ignored).
+2. **Agent profiles** — `src/agents/profiles/<name>.ts`: the Flue `defineAgentProfile({ instructions, skills, tools })` for each agent, importing its SKILL.md via Flue's `import ... with { type: "skill" }`. Tutor behavior changes belong in the SKILL.md, not the CLI. **These import SKILL.md, so they only resolve inside Flue's build** — never import them from the host (`bun src/main.ts`).
+3. **Server runner** — `src/runner.ts`: generic, agent-agnostic `startFlueServer()` — runs `flue build`, spawns `dist/server.mjs` with `PORT`, polls `/openapi.json` until ready, owns SIGINT/crash/shutdown handling. Returns `{ baseUrl, client, shutdown }`.
+4. **Agent I/O** — `src/agent-io.ts`: generic, transport-only `createAgentSession(client, agent, instanceId?)` — pins an agent + conversation instance and exposes `send(payload): AsyncIterable<AgentChunk>` from the SDK's streaming invoke (SSE). Conversation memory is server-side, keyed by the instance id. No printing or prompting here.
+5. **Console frontend** — `src/console/` (Ink/React): generic `runConsole(options)` — renders an arrow-key agent picker (`Menu.tsx`, skipped when there's one agent) then the chat (`App.tsx`): streamed-output rendering, action buttons, thinking indicator, error display. Knows nothing about the tutors or Flue; it takes `agents: AgentChoice[]` and `createReply(id)`, and each choice carries its own greeting/farewell/actions.
+6. **CLI entry** — `src/main.ts`: composition only — starts the server and runs the console with `AGENT_CHOICES` (the host-safe registry in `src/agents/profiles/registry.ts`), wiring `createReply(id)` to a fresh `AgentSession` for the chosen agent.
 
 ### Flue conventions (important)
 

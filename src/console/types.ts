@@ -12,21 +12,37 @@ export interface ReplyChunk {
   text: string;
 }
 
-export interface ConsoleOptions {
-  /** Produces the streamed reply for one submitted line. */
-  reply: (line: string) => AsyncIterable<ReplyChunk>;
+/**
+ * One selectable agent. The console renders these in a startup menu and stays
+ * agnostic about what they are — `id` is an opaque handle passed back to
+ * `createReply`, and the presentation fields drive the chat once chosen.
+ */
+export interface AgentChoice {
+  /** Opaque agent handle, passed to `createReply` once selected. */
+  id: string;
+  /** Menu label, e.g. "ACD Tutor". */
+  label: string;
+  /** Optional one-line menu description. */
+  description?: string;
   /** Shown once at the top of the transcript. */
   greeting?: string;
   /** Printed after the UI exits. */
   farewell?: string;
+  /** Always-visible action buttons above the input line. */
+  actions?: ConsoleAction[];
+}
+
+export interface ConsoleOptions {
+  /** Agents offered at startup (≥1). A single agent skips the menu. */
+  agents: AgentChoice[];
+  /** Builds the reply source for the chosen agent's id. */
+  createReply: (id: string) => (line: string) => AsyncIterable<ReplyChunk>;
   /** Shown when a reply yields no text. */
   emptyReplyMessage?: string;
   /** Indicator shown while waiting for the first reply chunk. */
   thinkingIndicator?: string;
   /** Formats a reply error for display. */
   formatError?: (err: unknown) => string;
-  /** Always-visible action buttons above the input line. */
-  actions?: ConsoleAction[];
 }
 
 /** One completed transcript entry. */
