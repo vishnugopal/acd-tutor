@@ -15,9 +15,33 @@ bun install            # install dependencies
 bun start              # run the tutor CLI (builds + starts server + REPL)
 bunx tsc --noEmit      # typecheck
 bunx --bun flue build  # build the agent bundle only (output: dist/server.mjs)
+bun test               # run the unit suite (fast; e2e auto-skipped)
+bun run test:e2e       # run the faux-model end-to-end test (builds + spawns a server)
 ```
 
-There are no tests yet. The `ANTHROPIC_API_KEY` lives in `.env` (loaded by flue).
+The `ANTHROPIC_API_KEY` lives in `.env` (loaded by flue).
+
+## Testing
+
+Tests use `bun test` and live in `test/`, mirroring the `src/` layout
+(e.g. `src/agent-io.ts` → `test/agent-io.test.ts`,
+`src/console/TextInput.tsx` → `test/console/TextInput.test.ts`). They are
+unit tests — each function in isolation. Shared test helpers live in
+`test/support/`; synthetic data builders in `test/fixtures/`.
+
+- **Reaching module-private functions**: pure helpers that aren't exported (e.g.
+  `truncate`/`formatDebugEvent`, `wordStart`/`wordEnd`, `resolveLessonPath`) are
+  exposed via a `__test__` export gated on `process.env.NODE_ENV === "test"`
+  (Bun sets this automatically under `bun test`), so production stays private.
+  Tests unwrap it: `const { truncate } = __test__!`.
+- **End-to-end** (`test/e2e/`): gated behind `RUN_E2E` (it runs `flue build`
+  and spawns a server, so it's skipped by default). It drives the `tutor-faux`
+  agent — the real server + tools + streaming against a scripted faux model
+  (`test/support/faux-tutor.ts`), no Anthropic key needed.
+
+**When you change code, run `bun test` and add or update the matching test
+before considering the work done.** Touching the streaming/tool path? Re-run
+`bun run test:e2e` too.
 
 ## Architecture
 

@@ -8,6 +8,14 @@ const FILE_NOT_FOUND = "FILE_NOT_FOUND";
 /** Sentinel returned by listFiles when there are no lesson files yet. */
 const NO_FILES = "NO_FILES";
 
+/**
+ * Resolves a model-supplied filename to a safe path inside `scratchDir`.
+ * basename() blocks path traversal — "../x" and "/etc/x" both become leaf names.
+ */
+function resolveLessonPath(scratchDir: string, filename: string): string {
+  return join(scratchDir, basename(filename));
+}
+
 export interface LessonFileToolOptions {
   /** Directory where lesson files are stored. */
   scratchDir: string;
@@ -24,8 +32,7 @@ export interface LessonFileToolOptions {
 export function createLessonFileTools(
   opts: LessonFileToolOptions,
 ): ToolDefinition[] {
-  // basename() blocks path traversal — "../x" and "/etc/x" both become leaf names.
-  const resolve = (filename: string) => join(opts.scratchDir, basename(filename));
+  const resolve = (filename: string) => resolveLessonPath(opts.scratchDir, filename);
 
   return [
     defineTool({
@@ -116,3 +123,7 @@ export function createLessonFileTools(
     }),
   ];
 }
+
+/** Test-only access to module-private pure helpers. Undefined outside `bun test`. */
+export const __test__ =
+  process.env.NODE_ENV === "test" ? { resolveLessonPath } : undefined;
