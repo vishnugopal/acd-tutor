@@ -6,37 +6,45 @@ import { join } from "node:path";
 import { createAgentSession, type AgentChunk } from "../../src/agent-io";
 
 /**
- * Full-stack run against the real Flue server using the dedicated `tutor-faux`
+ * Full-stack run against a real Flue server using the dedicated `tutor-faux`
  * agent (scripted model) — no Anthropic key, fully deterministic. Gated behind
  * RUN_E2E because it runs `flue build` and spawns a server subprocess (seconds,
  * not milliseconds).
  *
- * We manage the server process here instead of reusing startFlueServer: that
- * helper calls process.exit() on shutdown, which would tear down the test
- * runner itself.
+ * The faux agent lives in its own Flue project under test/e2e (test/e2e/agents
+ * + test/e2e/flue.config.ts), so we build with that config into a temp dir —
+ * it never enters the production build. We manage the server process here
+ * rather than reusing startFlueServer, which calls process.exit() on shutdown
+ * and would tear down the test runner itself.
  */
 describe.skipIf(!process.env.RUN_E2E)("tutor end-to-end (faux model)", () => {
   const PORT = 3899;
   const BASE_URL = `http://localhost:${PORT}`;
-  const PROJECT_ROOT = join(import.meta.dir, "..", "..");
+  const REPO_ROOT = join(import.meta.dir, "..", "..");
+  const E2E_CONFIG = join(import.meta.dir, "flue.config.ts");
+
+  // Build output must live inside the repo (its generated entry resolves
+  // node_modules by walking up the tree); `dist` is gitignored. A temp dir
+  // outside the repo can't resolve @flue/runtime.
+  const buildDir = join(import.meta.dir, "dist");
 
   let scratchDir: string;
   let server: Bun.Subprocess;
 
   beforeAll(async () => {
-    scratchDir = await mkdtemp(join(tmpdir(), "acd-e2e-"));
+    scratchDir = await mkdtemp(join(tmpdir(), "acd-e2e-scratch-"));
+    await rm(buildDir, { recursive: true, force: true });
 
-    const build = Bun.spawn(["bunx", "--bun", "flue", "build"], {
-      cwd: PROJECT_ROOT,
-      stdout: "ignore",
-      stderr: "pipe",
-    });
+    const build = Bun.spawn(
+      ["bunx", "--bun", "flue", "build", "--config", E2E_CONFIG, "--output", buildDir],
+      { cwd: REPO_ROOT, stdout: "ignore", stderr: "pipe" },
+    );
     if ((await build.exited) !== 0) {
       throw new Error(`flue build failed:\n${await new Response(build.stderr).text()}`);
     }
 
-    server = Bun.spawn(["bun", join(PROJECT_ROOT, "dist", "server.mjs")], {
-      cwd: PROJECT_ROOT,
+    server = Bun.spawn(["bun", join(buildDir, "server.mjs")], {
+      cwd: REPO_ROOT,
       env: {
         ...process.env,
         PORT: String(PORT),
@@ -61,6 +69,7 @@ describe.skipIf(!process.env.RUN_E2E)("tutor end-to-end (faux model)", () => {
   afterAll(async () => {
     server?.kill();
     await rm(scratchDir, { recursive: true, force: true });
+    await rm(buildDir, { recursive: true, force: true });
   });
 
   test("streams the scripted reply and the faux tool call writes the lesson file", async () => {

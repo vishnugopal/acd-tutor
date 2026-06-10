@@ -13,7 +13,7 @@ export const FAUX_TUTOR_MODEL = "acd-faux/tutor";
 /**
  * Registers a scripted (faux) model the tutor agent can run against offline —
  * no Anthropic key, deterministic output. Used by the e2e suite via the
- * `tutor-faux` agent shim.
+ * `tutor-faux` agent (test/e2e/agents).
  *
  * Must run at module top-level (server boot), not inside a createAgent
  * initializer: pi-ai's registry is module-scoped and the initializer runs in

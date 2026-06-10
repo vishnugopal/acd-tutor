@@ -37,7 +37,10 @@ unit tests — each function in isolation. Shared test helpers live in
 - **End-to-end** (`test/e2e/`): gated behind `RUN_E2E` (it runs `flue build`
   and spawns a server, so it's skipped by default). It drives the `tutor-faux`
   agent — the real server + tools + streaming against a scripted faux model
-  (`test/support/faux-tutor.ts`), no Anthropic key needed.
+  (`test/support/faux-tutor.ts`), no Anthropic key needed. The faux agent is its
+  own Flue project (`test/e2e/agents/` + `test/e2e/flue.config.ts`), built with
+  that config into `test/e2e/dist/`, so it never enters the production build —
+  `flue build` at the repo root sees only `src/agents/main.ts`.
 
 **When you change code, run `bun test` and add or update the matching test
 before considering the work done.** Touching the streaming/tool path? Re-run
