@@ -203,6 +203,31 @@
   color: #c2b98f;
 }
 
+/* ============ MDXEditor (essay lessons) ============ */
+.markdown-host .md-lesson-content {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.65;
+  padding: 16px 18px;
+}
+
+.markdown-host .md-lesson-content h1 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.markdown-host .md-lesson-content h2 {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.markdown-host .md-lesson-content blockquote {
+  border-left: 3px solid var(--color-cy-amber);
+  background: var(--color-cream-soft);
+  padding: 4px 12px;
+  border-radius: 0 8px 8px 0;
+}
+
 /* marked-line tints (decorations from lib/cmMarkedLines.ts) */
 .editor-host .cm-line-action {
   background: var(--color-action-tint);

@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { fetchAgents } from "./api";
 import { Mascot } from "./components/Mascot";
+import { AGENT_UI } from "./data/agents";
 import { ChatLessonScreen } from "./screens/ChatLessonScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { IdeLessonScreen } from "./screens/IdeLessonScreen";
 import type { AgentInfo, Screen } from "./types";
-
-/** Agents that get the code-editor layout; everything else is chat-only. */
-const IDE_AGENT_IDS = new Set(["acd-tutor"]);
 
 export function App() {
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
@@ -50,10 +48,18 @@ export function App() {
     );
   } else if (screen.name === "home") {
     body = <HomeScreen agents={agents} onSelect={openLesson} />;
-  } else if (IDE_AGENT_IDS.has(screen.agent.id)) {
-    body = <IdeLessonScreen agent={screen.agent} onExit={goHome} />;
   } else {
-    body = <ChatLessonScreen agent={screen.agent} onExit={goHome} />;
+    // Agents with a workbook editor get the IDE layout; the rest chat-only.
+    const editorKind = AGENT_UI[screen.agent.id]?.editor;
+    body = editorKind ? (
+      <IdeLessonScreen
+        agent={screen.agent}
+        editorKind={editorKind}
+        onExit={goHome}
+      />
+    ) : (
+      <ChatLessonScreen agent={screen.agent} onExit={goHome} />
+    );
   }
 
   return (
