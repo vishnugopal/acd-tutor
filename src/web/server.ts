@@ -2,7 +2,7 @@ import type { FlueClient } from "@flue/sdk";
 import { createAgentSession, type AgentChunk, type AgentSession } from "../agent-io";
 import type { AgentChoice } from "../console/types";
 import { createLessonFileStore, type LessonFileStore } from "./files";
-import { toTranscript, type TranscriptMessage } from "./history";
+import { appendTurn, type TranscriptMessage } from "./history";
 import indexPage from "./client/index.html";
 
 /**
@@ -89,15 +89,20 @@ export function startWebServer(options: WebServerOptions): WebServer {
   // Conversation memory itself lives Flue-server-side on the instance id.
   const sessions = new Map<string, AgentSession>();
 
-  // Latest conversation snapshot per instance, as emitted by Flue's
-  // `agent_end` event on every reply — served back for page reloads.
+  // Conversation transcript per instance, served back for page reloads.
+  // Flue's `agent_end` reports only each run's new messages (not the whole
+  // conversation), so we accumulate turns here rather than overwriting — see
+  // appendTurn. In-memory and per-server-lifetime, like a console run.
   const histories = new Map<string, TranscriptMessage[]>();
 
   const openSession = (agentId: string, instanceId: string): AgentSession =>
     createAgentSession(client, agentId, instanceId, {
       onEvent: (event) => {
         if (event.type === "agent_end") {
-          histories.set(instanceId, toTranscript(event.messages));
+          histories.set(
+            instanceId,
+            appendTurn(histories.get(instanceId) ?? [], event.messages),
+          );
         }
       },
     });
@@ -139,7 +144,7 @@ export function startWebServer(options: WebServerOptions): WebServer {
         },
       },
 
-      // Conversation history for a reload: Flue's latest agent_end snapshot.
+      // Conversation history for a reload: the turns accumulated so far.
       "/api/sessions/:id/history": {
         GET: (req) =>
           Response.json({ messages: histories.get(req.params.id) ?? [] }),

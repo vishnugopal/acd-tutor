@@ -1,8 +1,12 @@
 /**
- * Maps Flue's normalized conversation messages (the `agent_end` event's
- * `messages` payload) to the simple transcript the chat UI renders. Flue is
- * the source of truth for history — the web server only keeps its latest
- * emitted snapshot per conversation, nothing is reconstructed client-side.
+ * Maps Flue's normalized conversation messages to the simple transcript the
+ * chat UI renders.
+ *
+ * Important: Flue's `agent_end` event carries only the *current run's* new
+ * messages (this turn's prompt + reply) — NOT the full conversation. So the
+ * web server accumulates each turn's transcript across replies (see
+ * {@link appendTurn}) rather than treating any single `agent_end` payload as
+ * the whole history.
  */
 
 export interface TranscriptMessage {
@@ -47,4 +51,20 @@ export function toTranscript(messages: unknown[]): TranscriptMessage[] {
     });
   }
   return transcript;
+}
+
+/**
+ * Appends one `agent_end` turn's messages to the running transcript.
+ *
+ * Each `agent_end` only reports the new messages from that run, so history is
+ * built by accumulating turns — not overwriting. A turn that maps to nothing
+ * (e.g. Flue's error/abort path emits a single empty assistant message) leaves
+ * the existing transcript untouched, so a dropped stream never wipes history.
+ */
+export function appendTurn(
+  existing: TranscriptMessage[],
+  messages: unknown[],
+): TranscriptMessage[] {
+  const turn = toTranscript(messages);
+  return turn.length === 0 ? existing : [...existing, ...turn];
 }
