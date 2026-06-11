@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* scan the app sources for utility classes (relative to this file) */
+@source "../";
+
+/* ============================================================
+   Codeyoung brand tokens (sourced from codeyoung.com logo + CSS)
+   — exposed as Tailwind utilities: bg-cy-amber, text-ink, etc.
+   ============================================================ */
+@theme {
+  --color-cy-yellow: #ffeb00;
+  --color-cy-amber: #ffb600;
+  --color-cy-amber-dark: #c79000;
+  --color-cy-amber-soft: #fff1c7;
+  --color-cy-orange: #ff712d;
+  --color-cy-blue: #2e5cff;
+
+  --color-ink: #1d1a10;
+  --color-muted: #6d6a58;
+  --color-brand-slate: #2f4f4f;
+  --color-cream: #fff7e0;
+  --color-cream-soft: #fff9eb;
+  --color-line: #efe3c2;
+  --color-code-bg: #fffdf6;
+
+  --color-success: #2f9e63;
+  --color-success-tint: #edf9f1;
+  --color-action-tint: #fff1ef;
+
+  --font-ui: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --shadow-panel: 0 1px 2px rgba(61, 48, 6, 0.06), 0 8px 24px rgba(61, 48, 6, 0.09);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply font-ui text-ink text-base;
+    background:
+      radial-gradient(60% 40% at 100% 0%, #ffefbc, transparent 60%),
+      radial-gradient(50% 35% at 0% 100%, #fff3cd, transparent 60%),
+      var(--color-cream);
+  }
+}
+
+/* ============ shared keyframes (referenced via animate-[…]) ============ */
+@keyframes fadeup {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes popin {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes nodepulse {
+  50% {
+    box-shadow: 0 0 0 9px rgba(255, 182, 0, 0.1);
+  }
+}
+
+@keyframes typing-dot {
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ============ mascot animation rig (mood-driven SVG, stays CSS) ============ */
+.mascot svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mascot .grp {
+  animation: mascot-bob 3s ease-in-out infinite;
+  transform-origin: 50% 95%;
+}
+
+.mascot.cheer .grp {
+  animation: mascot-cheer 0.55s ease-in-out infinite;
+}
+
+.mascot.think .grp {
+  animation: mascot-tilt 2.4s ease-in-out infinite;
+}
+
+.mascot .blink {
+  animation: mascot-blink 4.5s infinite;
+  transform-origin: center;
+}
+
+@keyframes mascot-bob {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mascot-cheer {
+  50% {
+    transform: translateY(-14px) rotate(-6deg);
+  }
+}
+
+@keyframes mascot-tilt {
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* ============ CodeMirror internals (third-party DOM, stays CSS) ============ */
+.editor-host .cm-editor {
+  height: 100%;
+  font-size: 13px;
+  background: var(--color-code-bg);
+}
+
+.editor-host .cm-editor.cm-focused {
+  outline: none;
+}
+
+.editor-host .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.62;
+}
+
+.editor-host .cm-gutters {
+  background: var(--color-code-bg);
+  border-right: 1px solid var(--color-line);
+  color: #c2b98f;
+}
+
+/* marked-line tints (decorations from lib/cmMarkedLines.ts) */
+.editor-host .cm-line-action {
+  background: var(--color-action-tint);
+  box-shadow: inset 2.5px 0 0 var(--color-cy-orange);
+}
+
+.editor-host .cm-line-pure {
+  background: var(--color-success-tint);
+  box-shadow: inset 2.5px 0 0 var(--color-success);
+}
+
+/* ============ imperative effects (lib/effects.ts appends to <body>) ============ */
+.fx-confetti {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.fx-floater {
+  position: fixed;
+  z-index: 1300;
+  pointer-events: none;
+  font-weight: 800;
+  font-size: 19px;
+  color: var(--color-cy-amber-dark);
+  animation: fx-floatup 1.2s ease-out forwards;
+}
+
+@keyframes fx-floatup {
+  to {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* applied via classList from AcdLessonScreen on a failed check */
+.shake {
+  animation: fx-shake 0.3s ease;
+}
+
+@keyframes fx-shake {
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
