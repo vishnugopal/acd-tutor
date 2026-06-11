@@ -5,10 +5,13 @@ import { createLessonFileTools } from "../../tools";
 /**
  * Host-side workspace config. The skill never sees these — it manages lesson
  * files purely through the listFiles/readFile/writeFile/openFile tools.
- * Override the location with ACD_TUTOR_SCRATCH_DIR; openFile uses $EDITOR.
+ * Override the location with ACD_TUTOR_SCRATCH_DIR. openFile uses $EDITOR,
+ * unless the web runner sets ACD_TUTOR_OPEN_MODE=web — then it signals the
+ * web editor instead of spawning anything locally.
  */
 const scratchDir =
   process.env.ACD_TUTOR_SCRATCH_DIR ?? "/tmp/acd-tutor/scratch";
+const openMode = process.env.ACD_TUTOR_OPEN_MODE === "web" ? "web" : "editor";
 
 /**
  * Everything the ACD tutor agent is, minus the model: instructions, the ACD
@@ -22,5 +25,5 @@ export const acdProfile = defineAgentProfile({
     "On a fresh start, call listFiles first to find existing lesson files and resume where the learner left off.",
   ].join("\n"),
   skills: [acdTutor],
-  tools: createLessonFileTools({ scratchDir }),
+  tools: createLessonFileTools({ scratchDir, openMode }),
 });

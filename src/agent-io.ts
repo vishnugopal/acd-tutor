@@ -14,6 +14,14 @@ export interface AgentSession {
   send(payload: DirectAgentPayload): AsyncIterable<AgentChunk>;
 }
 
+export interface AgentSessionHooks {
+  /**
+   * Observes every raw Flue event before chunk formatting — e.g. the web
+   * server captures `agent_end` conversation snapshots for history replay.
+   */
+  onEvent?: (event: FlueEvent) => void;
+}
+
 const TRUNCATE_AT = 120;
 
 function truncate(value: unknown): string {
@@ -67,6 +75,7 @@ export function createAgentSession(
   client: FlueClient,
   agent: string,
   instanceId: string = `${agent}_${crypto.randomUUID()}`,
+  hooks?: AgentSessionHooks,
 ): AgentSession {
   return {
     instanceId,
@@ -76,6 +85,7 @@ export function createAgentSession(
         payload,
       });
       for await (const event of stream) {
+        hooks?.onEvent?.(event);
         if (event.type === "text_delta") {
           yield { kind: "text", text: event.text };
           continue;

@@ -1,0 +1,4 @@
+# Tailwind v4 processing for the web app's HTML bundling (src/web).
+# Only loads when Bun serves/bundles HTML — inert for flue build and bun test.
+[serve.static]
+plugins = ["bun-plugin-tailwind"]

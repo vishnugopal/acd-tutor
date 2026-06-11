@@ -2,6 +2,7 @@ import { defineTool, type ToolDefinition } from "@flue/runtime";
 import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { OPEN_REQUEST_FILE, type OpenRequest } from "./open-request";
 
 /** Sentinel returned when a requested lesson file doesn't exist. */
 const FILE_NOT_FOUND = "FILE_NOT_FOUND";
@@ -21,6 +22,13 @@ export interface LessonFileToolOptions {
   scratchDir: string;
   /** Editor command used by openFile. Defaults to $EDITOR, then `open`. */
   editor?: string;
+  /**
+   * How openFile presents the file to the learner:
+   * - "editor" (default): spawn the local editor — console runner behavior.
+   * - "web": write an open-request signal the web editor consumes; nothing
+   *   is spawned on the host.
+   */
+  openMode?: "editor" | "web";
 }
 
 /**
@@ -41,7 +49,9 @@ export function createLessonFileTools(
         "List the lesson files that exist in the learner's workspace, one bare filename per line (e.g. lesson-1.ts). Returns NO_FILES if there are none yet.",
       parameters: { type: "object", properties: {} },
       execute: async () => {
-        const names = await readdir(opts.scratchDir).catch(() => [] as string[]);
+        const names = (await readdir(opts.scratchDir).catch(() => [] as string[]))
+          // dotfiles are host bookkeeping (e.g. the open-request signal), not lessons
+          .filter((name) => !name.startsWith("."));
         return names.length > 0 ? names.sort().join("\n") : NO_FILES;
       },
     }),
@@ -110,6 +120,18 @@ export function createLessonFileTools(
           () => false,
         );
         if (!exists) return FILE_NOT_FOUND;
+        const name = basename(args.filename);
+        if (opts.openMode === "web") {
+          // Signal the web editor instead of touching the host: the client
+          // consumes this after the reply and switches to that file's tab.
+          const request: OpenRequest = { filename: name, requestedAt: Date.now() };
+          await writeFile(
+            join(opts.scratchDir, OPEN_REQUEST_FILE),
+            JSON.stringify(request),
+            "utf8",
+          );
+          return `Opened ${name} in the learner's editor`;
+        }
         const editor = opts.editor ?? process.env.EDITOR ?? "open";
         // shell:true handles multi-word commands like "zed -w"; detached +
         // unref so a waiting editor never blocks the server process.
@@ -118,7 +140,7 @@ export function createLessonFileTools(
           detached: true,
           stdio: "ignore",
         }).unref();
-        return `Opened ${basename(args.filename)} in the learner's editor`;
+        return `Opened ${name} in the learner's editor`;
       },
     }),
   ];

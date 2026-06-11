@@ -24,7 +24,7 @@ export const FAUX_TUTOR_MODEL = "acd-faux/tutor";
  * re-exported registerApiProvider (the instance Flue streams from);
  * registerProvider then makes the model resolvable.
  *
- * Scripted exchange: write the first lesson file, then reply.
+ * Scripted exchange: write the first lesson file, open it, then reply.
  */
 export function registerFauxTutorProvider(): string {
   const faux = registerFauxProvider({
@@ -44,6 +44,10 @@ export function registerFauxTutorProvider(): string {
         filename: "lesson-1.ts",
         content: "// Lesson 1: classify each line as Action, Calculation, or Data.\n",
       }),
+      { stopReason: "toolUse" },
+    ),
+    fauxAssistantMessage(
+      fauxToolCall("openFile", { filename: "lesson-1.ts" }),
       { stopReason: "toolUse" },
     ),
     fauxAssistantMessage(

@@ -52,6 +52,12 @@ describe("createLessonFileTools handlers", () => {
       expect(await tool(tools(), "listFiles")({})).toBe("a.ts\nb.ts");
     });
 
+    test("hides dotfiles (host bookkeeping like the open-request signal)", async () => {
+      await writeFile(join(scratchDir, "lesson-1.ts"), "x");
+      await writeFile(join(scratchDir, ".open-request"), "{}");
+      expect(await tool(tools(), "listFiles")({})).toBe("lesson-1.ts");
+    });
+
     test("returns NO_FILES when the scratch dir does not exist", async () => {
       await rm(scratchDir, { recursive: true, force: true });
       expect(await tool(tools(), "listFiles")({})).toBe("NO_FILES");
@@ -98,6 +104,26 @@ describe("createLessonFileTools handlers", () => {
   describe("openFile", () => {
     test("returns FILE_NOT_FOUND for a missing file (no editor spawned)", async () => {
       expect(await tool(tools(), "openFile")({ filename: "ghost.ts" })).toBe("FILE_NOT_FOUND");
+    });
+  });
+
+  describe("openFile (web mode)", () => {
+    const webTools = () => createLessonFileTools({ scratchDir, openMode: "web" });
+
+    test("writes an open-request signal instead of spawning an editor", async () => {
+      await writeFile(join(scratchDir, "lesson-2.ts"), "x");
+      const result = await tool(webTools(), "openFile")({ filename: "lesson-2.ts" });
+      expect(result).toBe("Opened lesson-2.ts in the learner's editor");
+      const request = JSON.parse(
+        await readFile(join(scratchDir, ".open-request"), "utf8"),
+      ) as { filename: string; requestedAt: number };
+      expect(request.filename).toBe("lesson-2.ts");
+      expect(request.requestedAt).toBeGreaterThan(0);
+    });
+
+    test("missing file: FILE_NOT_FOUND and no signal written", async () => {
+      expect(await tool(webTools(), "openFile")({ filename: "ghost.ts" })).toBe("FILE_NOT_FOUND");
+      await expect(readFile(join(scratchDir, ".open-request"), "utf8")).rejects.toThrow();
     });
   });
 });

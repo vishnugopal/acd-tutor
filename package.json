@@ -1,17 +1,26 @@
 {
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.1",
     "@flue/runtime": "^0.9.2",
     "@flue/sdk": "^0.9.2",
+    "@uiw/codemirror-theme-github": "^4.25.10",
+    "@uiw/react-codemirror": "^4.25.10",
     "ink": "^7.0.5",
     "marked": "^15",
     "marked-terminal": "^7.3.0",
-    "react": "^19.2.7"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.79.1",
     "@flue/cli": "^0.9.2",
     "@types/bun": "latest",
     "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "bun-plugin-tailwind": "^0.1.2",
     "ink-testing-library": "^4.0.0"
   },
   "name": "acd-tutor",
@@ -19,7 +28,8 @@
   "scripts": {
     "setup": "bun scripts/setup-memory.ts",
     "debug": "bunx --bun flue connect acd-tutor local",
-    "start": "bun src/main.ts",
+    "start": "bun src/web/main.ts",
+    "start:console": "bun src/main.ts",
     "test": "bun test",
     "test:e2e": "RUN_E2E=1 bun test test/e2e"
   },
