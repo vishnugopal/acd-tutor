@@ -1,0 +1,20 @@
+diff --git a/dist/sandbox-C2jFycj2.mjs b/dist/sandbox-C2jFycj2.mjs
+index 92f6e237a7797aea88277faecc0f5c892a99b6bd..e9a7dcacb1a4b830bde59c357a314981338a2e6d 100644
+--- a/dist/sandbox-C2jFycj2.mjs
++++ b/dist/sandbox-C2jFycj2.mjs
+@@ -320,8 +320,14 @@ function throwIfAborted(signal) {
+ 	if (signal?.aborted) throw new Error("Operation aborted");
+ }
+ function readPackagedSkillFile(skills, path) {
++	let decodedPath = path;
++	try {
++		decodedPath = decodeURIComponent(path);
++	} catch {}
+ 	for (const skill of Object.values(skills)) for (const [filePath, file] of Object.entries(skill.files)) {
+-		if (path !== packagedSkillReadPath(skill.id, filePath)) continue;
++		const encoded = packagedSkillReadPath(skill.id, filePath);
++		const raw = `${PACKAGED_SKILLS_ROOT}${skill.id}/${filePath}`;
++		if (path !== encoded && path !== raw && decodedPath !== encoded && decodedPath !== raw) continue;
+ 		return file.kind === "binary" ? wrapBase64ForReading(file.content) : new TextDecoder().decode(Uint8Array.from(atob(file.content), (character) => character.charCodeAt(0)));
+ 	}
+ }
