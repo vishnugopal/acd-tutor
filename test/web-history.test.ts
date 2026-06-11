@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toTranscript } from "../src/web/history";
+import { appendTurn, toTranscript } from "../src/web/history";
 
 /** Shapes mirror Flue's agent_end `messages` payload (normalized LlmMessages). */
 const text = (t: string) => ({ type: "text", text: t });
@@ -59,5 +59,38 @@ describe("toTranscript (Flue agent_end → chat transcript)", () => {
       { role: "system", content: [text("hidden")] },
     ]);
     expect(transcript).toEqual([{ role: "user", text: "plain string" }]);
+  });
+});
+
+describe("appendTurn (accumulate per-run agent_end deltas)", () => {
+  test("appends each turn's messages so full history is preserved", () => {
+    // Each agent_end carries only that run's new messages, not the whole chat.
+    let history = appendTurn([], [
+      { role: "user", content: [text("I've heard about triangles.")] },
+      { role: "assistant", content: [text("Great — what do you know?")] },
+    ]);
+    history = appendTurn(history, [
+      { role: "user", content: [text("They have three sides.")] },
+      { role: "assistant", content: [text("Right! What about their angles?")] },
+    ]);
+    expect(history).toEqual([
+      { role: "user", text: "I've heard about triangles." },
+      { role: "tutor", text: "Great — what do you know?" },
+      { role: "user", text: "They have three sides." },
+      { role: "tutor", text: "Right! What about their angles?" },
+    ]);
+  });
+
+  test("a turn that maps to nothing leaves history untouched", () => {
+    const history = appendTurn([], [
+      { role: "user", content: [text("hi")] },
+      { role: "assistant", content: [text("hello")] },
+    ]);
+    // Flue's error/abort path emits a single empty assistant message — this
+    // must not wipe the accumulated transcript.
+    const after = appendTurn(history, [
+      { role: "assistant", content: [text("")] },
+    ]);
+    expect(after).toEqual(history);
   });
 });
