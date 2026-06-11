@@ -21,7 +21,9 @@ export const route: AgentRouteHandler = (_c, next) => next();
 export default createAgent(() => ({
   model,
   instructions: "Faux ACD tutor used by the end-to-end test.",
-  tools: createLessonFileTools({ scratchDir }),
+  // openMode "web": tests must signal (write .open-request), never spawn a
+  // real editor on the machine running the suite.
+  tools: createLessonFileTools({ scratchDir, openMode: "web" }),
   sandbox: local(),
   cwd: process.cwd(),
 }));
