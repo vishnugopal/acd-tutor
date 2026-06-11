@@ -1,5 +1,6 @@
 import { AGENT_CHOICES } from "../agents/profiles/registry";
 import { startFlueServer } from "../runner";
+import { WORKSPACES } from "../workspaces";
 import { startWebServer } from "./server";
 
 /**
@@ -15,14 +16,17 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 
 console.log("Preparing tutor...");
-// The Flue server inherits this env: the ACD tutor's openFile tool signals
-// the web editor instead of spawning the local $EDITOR.
-process.env.ACD_TUTOR_OPEN_MODE = "web";
-const { client } = await startFlueServer({ port: 3789 });
+// The Flue server inherits this env: the tutors' openFile tool signals the
+// web editor instead of spawning the local $EDITOR.
+process.env.TUTOR_OPEN_MODE = "web";
+const { client } = await startFlueServer({
+  port: Number(process.env.FLUE_PORT ?? 3789),
+});
 
 const web = startWebServer({
   client,
   agents: AGENT_CHOICES,
+  workspaces: WORKSPACES,
   port: Number(process.env.WEB_PORT ?? 3790),
 });
 

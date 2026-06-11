@@ -28,6 +28,21 @@ or pick up right where you left off.
     actions: [{ label: "Check my work", message: CHECK_MY_WORK_PROMPT }],
   },
   {
+    id: "argumentative-essay-tutor",
+    label: "Essay Tutor",
+    description:
+      "Learn to build a convincing argument — and grow it into a full essay.",
+    greeting: `Hi! Welcome to the Essay tutor!
+
+I'll teach you how to build an argument that can actually change someone's
+mind — and grow it into a full essay, step by step.
+Say "let's start" (or anything, really) and I'll set up your first lesson —
+or pick up right where you left off.
+`,
+    farewell: "Goodbye! Keep arguing well!",
+    actions: [{ label: "Check my work", message: CHECK_MY_WORK_PROMPT }],
+  },
+  {
     id: "socratic-tutor",
     label: "Socratic Tutor",
     description:

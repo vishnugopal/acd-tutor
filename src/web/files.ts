@@ -22,11 +22,6 @@ export interface LessonFileStore {
   clear(): Promise<void>;
 }
 
-/** Same default as src/agents/profiles/acd-tutor.ts. */
-export function defaultScratchDir(): string {
-  return process.env.ACD_TUTOR_SCRATCH_DIR ?? "/tmp/acd-tutor/scratch";
-}
-
 export function createLessonFileStore(scratchDir: string): LessonFileStore {
   const resolve = (filename: string) => join(scratchDir, basename(filename));
 

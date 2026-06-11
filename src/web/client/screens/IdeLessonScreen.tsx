@@ -14,6 +14,8 @@ import { ChatPanel } from "../components/chat/ChatPanel";
 import { ChatSheet } from "../components/chat/ChatSheet";
 import { CodeEditor } from "../components/lesson/CodeEditor";
 import { FileTabs } from "../components/lesson/FileTabs";
+import { MarkdownEditor } from "../components/lesson/MarkdownEditor";
+import type { EditorKind } from "../data/agents";
 import { STATIC_GAME } from "../data/gamification";
 import { useAgentChat } from "../hooks/useAgentChat";
 import { useToast } from "../hooks/useToast";
@@ -32,17 +34,27 @@ const SAVE_LABEL: Record<SaveState, string> = {
   error: "⚠ couldn't save",
 };
 
+const TASK_STRIP_COPY: Record<EditorKind, string> = {
+  code: "🎯 Work right here in the editor — it saves by itself. When you're done, ask Beep to check it!",
+  markdown:
+    "✍️ Write right here in your workbook — it saves by itself. When you're ready, ask Beep to read it!",
+};
+
 /**
- * The coding-lesson screen (ACD tutor): a real editor over the lesson files
- * the tutor manages, plus live chat. The editor autosaves once typing stops,
- * so when the student asks for feedback the tutor's readFile sees their
- * latest work — same loop as the console runner, minus the external $EDITOR.
+ * The workbook lesson screen (ACD + essay tutors): a real editor over the
+ * lesson files the tutor manages, plus live chat. `editorKind` picks the
+ * editor (CodeMirror for .ts lessons, MDXEditor for .md essays). The editor
+ * autosaves once typing stops, so when the student asks for feedback the
+ * tutor's readFile sees their latest work — same loop as the console runner,
+ * minus the external $EDITOR.
  */
 export function IdeLessonScreen({
   agent,
+  editorKind,
   onExit,
 }: {
   agent: AgentInfo;
+  editorKind: EditorKind;
   onExit: () => void;
 }) {
   const { toast, showToast } = useToast();
@@ -60,31 +72,34 @@ export function IdeLessonScreen({
   activeRef.current = active;
   const savedRef = useRef(""); // last content known to be on disk
 
-  const openFile = useCallback(async (name: string) => {
-    const content = await readLessonFile(name);
-    if (content === null) return;
-    savedRef.current = content;
-    setCode(content);
-    setActive(name);
-    setSaveState("idle");
-  }, []);
+  const openFile = useCallback(
+    async (name: string) => {
+      const content = await readLessonFile(agent.id, name);
+      if (content === null) return;
+      savedRef.current = content;
+      setCode(content);
+      setActive(name);
+      setSaveState("idle");
+    },
+    [agent.id],
+  );
 
   /** Flush a pending (debounced) edit so switching files never loses work. */
   const flushPendingSave = useCallback(async () => {
     const file = activeRef.current;
     if (file && codeRef.current !== savedRef.current) {
-      await writeLessonFile(file, codeRef.current).catch(() => {});
+      await writeLessonFile(agent.id, file, codeRef.current).catch(() => {});
       savedRef.current = codeRef.current;
     }
-  }, []);
+  }, [agent.id]);
 
   /** Sync with the tutor's workspace after every reply (it may create/edit files). */
   const syncFiles = useCallback(async () => {
-    const latest = sortLessonFiles(await listLessonFiles());
+    const latest = sortLessonFiles(await listLessonFiles(agent.id));
     setFiles(latest);
 
     // The tutor's openFile call (web mode) wins: open exactly that file.
-    const requested = await takeOpenRequest().catch(() => null);
+    const requested = await takeOpenRequest(agent.id).catch(() => null);
     if (requested && latest.includes(requested)) {
       if (requested !== activeRef.current) {
         await flushPendingSave();
@@ -102,7 +117,7 @@ export function IdeLessonScreen({
     if (current === null) {
       // First file just appeared — open it.
       await openFile(newest);
-      showToast(`📂 ${newest} is ready — happy hunting!`);
+      showToast(`📂 ${newest} is ready!`);
       return;
     }
     const newer =
@@ -120,13 +135,13 @@ export function IdeLessonScreen({
     }
     if (!dirty) {
       // The tutor may have rewritten the current file (e.g. added comments).
-      const content = await readLessonFile(current);
+      const content = await readLessonFile(agent.id, current);
       if (content !== null && content !== savedRef.current) {
         savedRef.current = content;
         setCode(content);
       }
     }
-  }, [flushPendingSave, openFile, showToast]);
+  }, [agent.id, flushPendingSave, openFile, showToast]);
 
   const chat = useAgentChat({
     agentId: agent.id,
@@ -153,7 +168,7 @@ export function IdeLessonScreen({
       if (!file) return;
       setSaveState("saving");
       try {
-        await writeLessonFile(file, snapshot);
+        await writeLessonFile(agent.id, file, snapshot);
         savedRef.current = snapshot;
         setSaveState(codeRef.current === snapshot ? "saved" : "unsaved");
       } catch {
@@ -161,7 +176,7 @@ export function IdeLessonScreen({
       }
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [code, active]);
+  }, [code, active, agent.id]);
 
   /** Flush any pending edit before switching files so nothing is lost. */
   const handleSelectFile = useCallback(
@@ -180,7 +195,7 @@ export function IdeLessonScreen({
       "Start over from lesson 1? Your lesson files and this chat will be cleared.",
     );
     if (!sure) return;
-    await clearLessonFiles().catch(() => {});
+    await clearLessonFiles(agent.id).catch(() => {});
     chat.reset();
     setFiles([]);
     setActive(null);
@@ -189,7 +204,7 @@ export function IdeLessonScreen({
     setSaveState("idle");
     setUnread(true);
     showToast("🌱 Fresh start! Say hi to Beep to begin lesson 1.");
-  }, [chat, showToast]);
+  }, [agent.id, chat, showToast]);
 
   const mood = chat.isBusy ? "think" : "idle";
   const hasWorkspace = files.length > 0;
@@ -240,10 +255,13 @@ export function IdeLessonScreen({
             {hasWorkspace && active ? (
               <>
                 <div className="task-strip flex items-center gap-2 border-b border-[#f3e3bb] bg-cy-amber-soft px-[14px] py-2 text-[13.5px] text-[#6e5212]">
-                  🎯 Work right here in the editor — it saves by itself. When
-                  you're done, ask Beep to check it!
+                  {TASK_STRIP_COPY[editorKind]}
                 </div>
-                <CodeEditor value={code} onChange={setCode} />
+                {editorKind === "markdown" ? (
+                  <MarkdownEditor value={code} onChange={setCode} />
+                ) : (
+                  <CodeEditor value={code} onChange={setCode} />
+                )}
               </>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">

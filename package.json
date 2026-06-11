@@ -5,6 +5,7 @@
     "@codemirror/view": "^6.43.1",
     "@flue/runtime": "^0.9.2",
     "@flue/sdk": "^0.9.2",
+    "@mdxeditor/editor": "^4.0.2",
     "@uiw/codemirror-theme-github": "^4.25.10",
     "@uiw/react-codemirror": "^4.25.10",
     "ink": "^7.0.5",

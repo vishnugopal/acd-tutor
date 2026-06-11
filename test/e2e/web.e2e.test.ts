@@ -68,8 +68,8 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
           actions: [{ label: "Check my work", message: "check please" }],
         },
       ],
+      workspaces: { "tutor-faux": scratchDir },
       port: WEB_PORT,
-      scratchDir,
     });
   }, 60_000);
 
@@ -142,14 +142,14 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
 
     // …and the web file API sees the same workspace, minus host bookkeeping
     // (the openFile signal is a dotfile, never listed as a lesson).
-    const files = (await (await fetch(`${WEB_URL}/api/files`)).json()) as {
+    const files = (await (await fetch(`${WEB_URL}/api/agents/tutor-faux/files`)).json()) as {
       files: string[];
     };
     expect(files.files).toContain("lesson-1.ts");
     expect(files.files).not.toContain(".open-request");
 
     const file = (await (
-      await fetch(`${WEB_URL}/api/files/lesson-1.ts`)
+      await fetch(`${WEB_URL}/api/agents/tutor-faux/files/lesson-1.ts`)
     ).json()) as { content: string };
     expect(file.content).toContain("Lesson 1");
   }, 30_000);
@@ -193,13 +193,13 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
   test("the tutor's openFile call surfaces as a consumable open request", async () => {
     // The faux script called openFile(lesson-1.ts) during the previous test's
     // reply; web mode means no editor was spawned — just this signal.
-    const first = (await (await fetch(`${WEB_URL}/api/open-request`)).json()) as {
+    const first = (await (await fetch(`${WEB_URL}/api/agents/tutor-faux/open-request`)).json()) as {
       filename: string | null;
     };
     expect(first.filename).toBe("lesson-1.ts");
 
     // Consume-on-read: a second take returns nothing.
-    const second = (await (await fetch(`${WEB_URL}/api/open-request`)).json()) as {
+    const second = (await (await fetch(`${WEB_URL}/api/agents/tutor-faux/open-request`)).json()) as {
       filename: string | null;
     };
     expect(second.filename).toBeNull();
@@ -207,7 +207,7 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
 
   test("autosave PUT writes through to the scratch dir the agent reads", async () => {
     const content = "// student work\nconst x = 1; // ok\n";
-    const res = await fetch(`${WEB_URL}/api/files/lesson-1.ts`, {
+    const res = await fetch(`${WEB_URL}/api/agents/tutor-faux/files/lesson-1.ts`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
@@ -217,17 +217,22 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
   });
 
   test("DELETE /api/files wipes the workspace (start from scratch)", async () => {
-    const res = await fetch(`${WEB_URL}/api/files`, { method: "DELETE" });
+    const res = await fetch(`${WEB_URL}/api/agents/tutor-faux/files`, { method: "DELETE" });
     expect(res.ok).toBe(true);
-    const { files } = (await (await fetch(`${WEB_URL}/api/files`)).json()) as {
+    const { files } = (await (await fetch(`${WEB_URL}/api/agents/tutor-faux/files`)).json()) as {
       files: string[];
     };
     expect(files).toEqual([]);
   });
 
+  test("agents without a workspace get 404s from file routes", async () => {
+    const res = await fetch(`${WEB_URL}/api/agents/chat-only/files`);
+    expect(res.status).toBe(404);
+  });
+
   test("blocks path traversal in file names", async () => {
     const res = await fetch(
-      `${WEB_URL}/api/files/${encodeURIComponent("../escape.ts")}`,
+      `${WEB_URL}/api/agents/tutor-faux/files/${encodeURIComponent("../escape.ts")}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -235,7 +240,7 @@ describe.skipIf(!process.env.RUN_E2E)("web runner end-to-end (faux model)", () =
       },
     );
     expect(res.ok).toBe(true); // basename()d into the scratch dir…
-    const files = (await (await fetch(`${WEB_URL}/api/files`)).json()) as {
+    const files = (await (await fetch(`${WEB_URL}/api/agents/tutor-faux/files`)).json()) as {
       files: string[];
     };
     expect(files.files).toContain("escape.ts"); // …not written outside it

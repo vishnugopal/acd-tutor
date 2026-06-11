@@ -1,7 +1,7 @@
 import type { FlueClient } from "@flue/sdk";
 import { createAgentSession, type AgentChunk, type AgentSession } from "../agent-io";
 import type { AgentChoice } from "../console/types";
-import { createLessonFileStore, defaultScratchDir } from "./files";
+import { createLessonFileStore, type LessonFileStore } from "./files";
 import { toTranscript, type TranscriptMessage } from "./history";
 import indexPage from "./client/index.html";
 
@@ -18,8 +18,9 @@ import indexPage from "./client/index.html";
 export interface WebServerOptions {
   client: FlueClient;
   agents: AgentChoice[];
+  /** Lesson-file workspace per agent id (agents without one are chat-only). */
+  workspaces?: Record<string, string>;
   port?: number;
-  scratchDir?: string;
 }
 
 export interface WebServer {
@@ -27,19 +28,32 @@ export interface WebServer {
   stop(): void;
 }
 
-/** SSE wire format: one `data: <json AgentChunk>` event per chunk, then `done`. */
+/**
+ * SSE wire format: one `data: <json AgentChunk>` event per chunk, then `done`.
+ * A comment heartbeat keeps the connection alive through long tool-heavy
+ * stretches where the agent produces no chunks (SSE comments are ignored by
+ * the client parser).
+ */
 function sseReply(chunks: AsyncIterable<AgentChunk>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (payload: unknown) =>
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": keepalive\n\n"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15_000);
       try {
         for await (const chunk of chunks) emit(chunk);
         emit({ kind: "done" });
       } catch (err) {
         emit({ kind: "error", text: err instanceof Error ? err.message : String(err) });
       } finally {
+        clearInterval(heartbeat);
         controller.close();
       }
     },
@@ -60,7 +74,16 @@ const notFound = (message: string) =>
 
 export function startWebServer(options: WebServerOptions): WebServer {
   const { client, agents, port = 3790 } = options;
-  const files = createLessonFileStore(options.scratchDir ?? defaultScratchDir());
+
+  // One lesson-file store per agent workspace (e.g. acd-tutor → .ts lessons,
+  // argumentative-essay-tutor → .md lessons).
+  const stores = new Map<string, LessonFileStore>(
+    Object.entries(options.workspaces ?? {}).map(([agentId, dir]) => [
+      agentId,
+      createLessonFileStore(dir),
+    ]),
+  );
+  const storeFor = (agentId: string) => stores.get(agentId) ?? null;
 
   // Sessions are in-memory and per-server-lifetime, like a console run.
   // Conversation memory itself lives Flue-server-side on the instance id.
@@ -81,6 +104,9 @@ export function startWebServer(options: WebServerOptions): WebServer {
 
   const server = Bun.serve({
     port,
+    // Agent turns can stay quiet for a while mid-tools; the SSE heartbeat
+    // ticks every 15s, so anything comfortably above that works.
+    idleTimeout: 120,
     routes: {
       "/": indexPage,
 
@@ -132,11 +158,17 @@ export function startWebServer(options: WebServerOptions): WebServer {
         },
       },
 
-      "/api/files": {
-        GET: async () => Response.json({ files: await files.list() }),
+      "/api/agents/:agent/files": {
+        GET: async (req) => {
+          const files = storeFor(req.params.agent);
+          if (!files) return notFound("No workspace for this agent");
+          return Response.json({ files: await files.list() });
+        },
         // "Start from scratch": wipe the workspace so the tutor's listFiles
         // sees a fresh learner and begins again at lesson 1.
-        DELETE: async () => {
+        DELETE: async (req) => {
+          const files = storeFor(req.params.agent);
+          if (!files) return notFound("No workspace for this agent");
           await files.clear();
           return Response.json({ ok: true });
         },
@@ -145,13 +177,18 @@ export function startWebServer(options: WebServerOptions): WebServer {
       // The agent's openFile tool (web mode) leaves an open request; the
       // client polls this after each reply. Consume-on-read: the web editor
       // is the single consumer.
-      "/api/open-request": {
-        GET: async () =>
-          Response.json({ filename: await files.takeOpenRequest() }),
+      "/api/agents/:agent/open-request": {
+        GET: async (req) => {
+          const files = storeFor(req.params.agent);
+          if (!files) return notFound("No workspace for this agent");
+          return Response.json({ filename: await files.takeOpenRequest() });
+        },
       },
 
-      "/api/files/:name": {
+      "/api/agents/:agent/files/:name": {
         GET: async (req) => {
+          const files = storeFor(req.params.agent);
+          if (!files) return notFound("No workspace for this agent");
           const name = decodeURIComponent(req.params.name);
           const content = await files.read(name);
           if (content === null) return notFound("File not found");
@@ -159,6 +196,8 @@ export function startWebServer(options: WebServerOptions): WebServer {
         },
         // Autosave endpoint — same shape as the agent's writeFile tool.
         PUT: async (req) => {
+          const files = storeFor(req.params.agent);
+          if (!files) return notFound("No workspace for this agent");
           const name = decodeURIComponent(req.params.name);
           const body = (await req.json().catch(() => null)) as {
             content?: string;

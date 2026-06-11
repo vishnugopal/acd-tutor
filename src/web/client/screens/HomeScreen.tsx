@@ -3,7 +3,8 @@ import { listLessonFiles } from "../api";
 import { AppBar } from "../components/AppBar";
 import { CodeBuddyLogo } from "../components/CodeBuddyLogo";
 import { Mascot } from "../components/Mascot";
-import { ACD_COURSE_STEPS, STATIC_GAME } from "../data/gamification";
+import { AGENT_UI, DEFAULT_AGENT_UI, type CourseConfig } from "../data/agents";
+import { STATIC_GAME } from "../data/gamification";
 import { courseProgress } from "../lib/lessonFiles";
 import type { AgentInfo } from "../types";
 
@@ -20,22 +21,22 @@ const NODE_BY_STATE = {
   lock: "border-line bg-code-bg text-muted opacity-55",
 };
 
-/** Per-agent card icon; falls back to a sparkle for future agents. */
-const AGENT_ICONS: Record<string, { emoji: string; bg: string }> = {
-  "acd-tutor": { emoji: "🕵️", bg: "bg-cy-amber-soft" },
-  "socratic-tutor": { emoji: "💭", bg: "bg-[#ffe5d6]" },
-};
-
-function CourseStepper({ files }: { files: string[] }) {
+function CourseStepper({
+  course,
+  files,
+}: {
+  course: CourseConfig;
+  files: string[];
+}) {
   const { current, done } = courseProgress(files);
 
   return (
     <div className="stepper-card rounded-[18px] border border-line bg-white p-[18px] shadow-panel">
       <h3 className="mb-[14px] text-[13px] font-bold tracking-[0.1em] text-muted uppercase">
-        Actions · Calculations · Data — course
+        {course.title}
       </h3>
       <div className="stepper flex items-start overflow-x-auto pb-[6px]">
-        {ACD_COURSE_STEPS.map((step) => {
+        {course.steps.map((step) => {
           const isDone = done.includes(step.number);
           const state = isDone ? "done" : step.number === current ? "cur" : "lock";
           return (
@@ -70,14 +71,24 @@ export function HomeScreen({
   agents: AgentInfo[];
   onSelect: (agent: AgentInfo) => void;
 }) {
-  // Real workspace state drives the course progress on the dashboard.
-  const [files, setFiles] = useState<string[]>([]);
-  useEffect(() => {
-    void listLessonFiles().then(setFiles).catch(() => {});
-  }, []);
+  // Real workspace state (per course agent) drives the dashboard progress.
+  const [workspaces, setWorkspaces] = useState<Record<string, string[]>>({});
 
-  const { current } = courseProgress(files);
-  const started = files.length > 0;
+  useEffect(() => {
+    for (const agent of agents) {
+      if (!AGENT_UI[agent.id]?.course) continue;
+      void listLessonFiles(agent.id)
+        .then((files) =>
+          setWorkspaces((prev) => ({ ...prev, [agent.id]: files })),
+        )
+        .catch(() => {});
+    }
+  }, [agents]);
+
+  const startedCourses = agents.filter(
+    (a) => AGENT_UI[a.id]?.course && (workspaces[a.id]?.length ?? 0) > 0,
+  );
+  const anyStarted = startedCourses.length > 0;
 
   return (
     <section className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both]">
@@ -87,55 +98,72 @@ export function HomeScreen({
         <div className="hero-row flex items-center gap-4">
           <Mascot mood="idle" className="h-[84px] w-[90px]" />
           <div className="hero-bubble rounded-2xl rounded-bl-[4px] border border-line bg-white px-4 py-[10px] text-[15px] shadow-panel animate-[fadeup_.5s_ease_.15s_both]">
-            {started
-              ? `You're on lesson ${current} — let's keep going! 🔍`
+            {anyStarted
+              ? "Welcome back! Your lessons are right where you left them. 🔍"
               : "Hi, I'm Beep! Pick a tutor below and let's learn something cool."}
           </div>
         </div>
 
         <div className="hello">
           <h1 className="text-[clamp(26px,5vw,34px)] font-extrabold tracking-[-0.02em]">
-            Hey there, <em className="text-cy-amber-dark not-italic">coder</em>.
+            Hey there, <em className="text-cy-amber-dark not-italic">learner</em>.
           </h1>
           <p className="mt-1 text-[15.5px] text-muted">
-            Day {STATIC_GAME.streak} of your streak. Keep the build green.
+            Day {STATIC_GAME.streak} of your streak. Keep it going.
           </p>
         </div>
 
-        <CourseStepper files={files} />
+        {agents.map((agent) => {
+          const course = AGENT_UI[agent.id]?.course;
+          if (!course) return null;
+          return (
+            <CourseStepper
+              key={agent.id}
+              course={course}
+              files={workspaces[agent.id] ?? []}
+            />
+          );
+        })}
 
         <div className="cards grid grid-cols-1 gap-[14px] min-[720px]:grid-cols-2">
           {agents.map((agent) => {
-            const icon = AGENT_ICONS[agent.id] ?? { emoji: "✨", bg: "bg-cy-amber-soft" };
-            const isAcd = agent.id === "acd-tutor";
+            const ui = AGENT_UI[agent.id] ?? DEFAULT_AGENT_UI;
+            const course = ui.course;
+            const files = workspaces[agent.id] ?? [];
+            const started = course !== undefined && files.length > 0;
+            const { current } = courseProgress(files);
             return (
               <button
                 key={agent.id}
                 className={CARD}
                 onClick={() => onSelect(agent)}
               >
-                {isAcd && !started && (
+                {course && !started && !anyStarted && (
                   <span className="badge absolute top-4 right-4 rounded-full bg-cy-yellow px-[10px] py-1 text-[11px] font-extrabold tracking-[0.06em] text-[#5b4c00] uppercase">
                     start here
                   </span>
                 )}
                 <div
-                  className={`mb-3 grid size-11 place-items-center rounded-[13px] text-[21px] ${icon.bg}`}
+                  className={`mb-3 grid size-11 place-items-center rounded-[13px] text-[21px] ${ui.iconBg}`}
                 >
-                  {icon.emoji}
+                  {ui.icon}
                 </div>
                 <h2 className="text-[19px] font-extrabold tracking-[-0.01em]">
                   {agent.label}
                 </h2>
                 <p className="mt-[5px] text-[14.5px] leading-normal text-muted">
-                  {isAcd && started
-                    ? `You're on lesson ${current} of ${ACD_COURSE_STEPS.length} — jump back in!`
+                  {started && course
+                    ? `You're on lesson ${current} of ${course.steps.length} — jump back in!`
                     : agent.description}
                 </p>
                 <span
-                  className={`mt-[14px] inline-flex items-center gap-[6px] text-sm font-bold ${isAcd ? "text-cy-amber-dark" : "text-cy-orange"}`}
+                  className={`mt-[14px] inline-flex items-center gap-[6px] text-sm font-bold ${course ? "text-cy-amber-dark" : "text-cy-orange"}`}
                 >
-                  {isAcd ? (started ? "Continue learning" : "Start learning") : "Start asking"}{" "}
+                  {course
+                    ? started
+                      ? "Continue learning"
+                      : "Start learning"
+                    : "Start asking"}{" "}
                   <i className="not-italic transition-transform duration-[160ms] group-hover:translate-x-1">
                     →
                   </i>

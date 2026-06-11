@@ -84,21 +84,30 @@ export async function* streamReply(
   }
 }
 
+/* Lesson-file APIs are per-agent: each tutor has its own workspace
+   (acd-tutor → .ts lessons, argumentative-essay-tutor → .md lessons). */
+
+const filesBase = (agentId: string) =>
+  `/api/agents/${encodeURIComponent(agentId)}/files`;
+
 /** "Start from scratch": wipe the lesson workspace (tutor restarts at lesson 1). */
-export async function clearLessonFiles(): Promise<void> {
-  const res = await fetch("/api/files", { method: "DELETE" });
+export async function clearLessonFiles(agentId: string): Promise<void> {
+  const res = await fetch(filesBase(agentId), { method: "DELETE" });
   await asJson<{ ok: boolean }>(res);
 }
 
-export async function listLessonFiles(): Promise<string[]> {
-  const { files } = await fetch("/api/files").then((r) =>
+export async function listLessonFiles(agentId: string): Promise<string[]> {
+  const { files } = await fetch(filesBase(agentId)).then((r) =>
     asJson<{ files: string[] }>(r),
   );
   return files;
 }
 
-export async function readLessonFile(name: string): Promise<string | null> {
-  const res = await fetch(`/api/files/${encodeURIComponent(name)}`);
+export async function readLessonFile(
+  agentId: string,
+  name: string,
+): Promise<string | null> {
+  const res = await fetch(`${filesBase(agentId)}/${encodeURIComponent(name)}`);
   if (res.status === 404) return null;
   const { content } = await asJson<{ content: string }>(res);
   return content;
@@ -108,19 +117,20 @@ export async function readLessonFile(name: string): Promise<string | null> {
  * Consumes the agent's pending openFile request, if any — the web-mode
  * equivalent of the tutor popping the file open in a local editor.
  */
-export async function takeOpenRequest(): Promise<string | null> {
-  const { filename } = await fetch("/api/open-request").then((r) =>
-    asJson<{ filename: string | null }>(r),
-  );
+export async function takeOpenRequest(agentId: string): Promise<string | null> {
+  const { filename } = await fetch(
+    `/api/agents/${encodeURIComponent(agentId)}/open-request`,
+  ).then((r) => asJson<{ filename: string | null }>(r));
   return filename;
 }
 
 /** Autosave: same semantics as the agent's writeFile tool (create/overwrite). */
 export async function writeLessonFile(
+  agentId: string,
   name: string,
   content: string,
 ): Promise<void> {
-  const res = await fetch(`/api/files/${encodeURIComponent(name)}`, {
+  const res = await fetch(`${filesBase(agentId)}/${encodeURIComponent(name)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
