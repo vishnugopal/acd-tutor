@@ -110,12 +110,14 @@ export function ChatPanel({
         {messages.map((m) => (
           <Message key={m.id} message={m} tutorName={tutorName} />
         ))}
-        {streamingText === "" && <TypingIndicator tutorName={tutorName} />}
         {streamingText ? (
           <div className={`${MSG_BASE} ${MSG_TUTOR} streaming`} data-name={tutorName}>
             <Markdown text={streamingText} />
           </div>
         ) : null}
+        {/* Shown for the whole reply, not just before the first chunk — the
+            tutor often pauses mid-reply to use tools. */}
+        {busy && <TypingIndicator tutorName={tutorName} />}
       </div>
 
       {actions.length > 0 && onAction && (
