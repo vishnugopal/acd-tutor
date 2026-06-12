@@ -76,7 +76,19 @@ export function useAgentChat({
   const [debugMode, setDebugMode] = useState(false);
   const debugModeRef = useRef(debugMode);
   debugModeRef.current = debugMode;
-  const toggleDebug = useCallback(() => setDebugMode((v) => !v), []);
+  const toggleDebug = useCallback(() => {
+    const next = !debugModeRef.current;
+    setDebugMode(next);
+    setMessages((prev) => [
+      ...prev,
+      msg(
+        "info",
+        next
+          ? "🐞 Debug mode is on — you'll see what the tutor is doing behind the scenes."
+          : "🐞 Debug mode is off.",
+      ),
+    ]);
+  }, []);
   const busyRef = useRef(false);
   const sessionRef = useRef<Promise<string> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
