@@ -1,66 +1,41 @@
+import {
+  agentDefinition,
+  type AgentId,
+  type CourseOutline,
+  type EditorKind,
+} from "../../../shared/catalog";
+
+export type { CourseOutline, EditorKind };
+
 /**
- * Per-agent UI configuration: which editor (if any) the lesson screen uses,
- * card iconography, and the course outline shown on the dashboard. Agents
- * not listed here fall back to a chat-only screen with default styling.
+ * Cosmetic, web-only agent styling. Everything behavioral (editor kind,
+ * course outline) lives in the shared catalog; this map only carries what the
+ * catalog shouldn't know about — Tailwind classes and emoji.
  */
-
-export type EditorKind = "code" | "markdown";
-
-export interface CourseConfig {
-  title: string;
-  steps: Array<{ number: number; label: string }>;
-}
-
-export interface AgentUiConfig {
-  /** Presence of an editor makes the agent use the IDE lesson screen. */
-  editor?: EditorKind;
+export interface AgentIcon {
   icon: string;
   iconBg: string;
-  course?: CourseConfig;
 }
 
-export const AGENT_UI: Record<string, AgentUiConfig> = {
-  "acd-tutor": {
-    editor: "code",
-    icon: "🕵️",
-    iconBg: "bg-cy-amber-soft",
-    course: {
-      title: "Actions · Calculations · Data — course",
-      steps: [
-        { number: 1, label: "Warm-up" },
-        { number: 2, label: "Sort it" },
-        { number: 3, label: "Line Hunt" },
-        { number: 4, label: "Contagion" },
-        { number: 5, label: "Extract" },
-        { number: 6, label: "Explicit" },
-        { number: 7, label: "Capstone" },
-      ],
-    },
-  },
-  "argumentative-essay-tutor": {
-    editor: "markdown",
-    icon: "📝",
-    iconBg: "bg-[#e5edff]",
-    course: {
-      title: "Argumentative Essay — course",
-      steps: [
-        { number: 1, label: "Claim it" },
-        { number: 2, label: "The parts" },
-        { number: 3, label: "Evidence" },
-        { number: 4, label: "Other side" },
-        { number: 5, label: "Thesis" },
-        { number: 6, label: "Paragraph" },
-        { number: 7, label: "Full essay" },
-      ],
-    },
-  },
-  "socratic-tutor": {
-    icon: "💭",
-    iconBg: "bg-[#ffe5d6]",
-  },
-};
+const AGENT_ICONS = {
+  "acd-tutor": { icon: "🕵️", iconBg: "bg-cy-amber-soft" },
+  "argumentative-essay-tutor": { icon: "📝", iconBg: "bg-[#e5edff]" },
+  "socratic-tutor": { icon: "💭", iconBg: "bg-[#ffe5d6]" },
+} satisfies Record<AgentId, AgentIcon>;
 
-export const DEFAULT_AGENT_UI: AgentUiConfig = {
-  icon: "✨",
-  iconBg: "bg-cy-amber-soft",
-};
+const DEFAULT_AGENT_ICON: AgentIcon = { icon: "✨", iconBg: "bg-cy-amber-soft" };
+
+/** Card iconography for a wire agent id (default styling outside the catalog). */
+export function agentIcon(id: string): AgentIcon {
+  return id in AGENT_ICONS ? AGENT_ICONS[id as AgentId] : DEFAULT_AGENT_ICON;
+}
+
+/** Dashboard course outline, if the agent has one. */
+export function agentCourse(id: string): CourseOutline | undefined {
+  return agentDefinition(id)?.course;
+}
+
+/** Which editor the lesson screen uses; undefined = chat-only screen. */
+export function agentEditor(id: string): EditorKind | undefined {
+  return agentDefinition(id)?.workspace?.editor;
+}

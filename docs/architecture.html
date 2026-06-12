@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>acd-tutor — Architecture Map</title>
+<style>
+  :root {
+    --bg: #0b1018;
+    --bg-soft: #0e1521;
+    --panel: #121b2a;
+    --card: #141e2f;
+    --card-hi: #18243a;
+    --ink: #dbe4f0;
+    --muted: #7e8ba2;
+    --faint: #56627a;
+    --line: #223049;
+    --line-soft: #1a2538;
+
+    --shared: #8e9cf5;   /* indigo  — layer 0                  */
+    --flue:   #b794f6;   /* violet  — flue build world         */
+    --host:   #4cc3f7;   /* sky     — host (bun) process       */
+    --browser:#41d6a3;   /* emerald — browser bundle           */
+    --artifact:#f5b545;  /* amber   — runtime artifacts / fs   */
+    --rose:   #fb7185;   /* review-note accent                 */
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 500px at 70% -10%, #18233a66, transparent 60%),
+      radial-gradient(900px 420px at 8% 0%, #1b163566, transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font: 14px/1.55 var(--mono);
+    overflow: hidden;
+  }
+  ::selection { background: #f5b54533; }
+
+  /* ============================== top bar ============================== */
+  header {
+    position: fixed; inset: 0 0 auto 0; z-index: 60;
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: #0b1018e6; backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .brand { display: flex; flex-direction: column; line-height: 1.15; white-space: nowrap; }
+  .brand b { font-size: 14px; letter-spacing: .02em; }
+  .brand span { font-size: 10.5px; color: var(--faint); letter-spacing: .22em; text-transform: uppercase; }
+  .brand b em { font-style: normal; color: var(--artifact); }
+
+  .search {
+    flex: 0 1 230px; min-width: 130px;
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--ink); font: 12px var(--mono);
+    padding: 7px 10px; outline: none;
+  }
+  .search:focus { border-color: var(--host); box-shadow: 0 0 0 3px #4cc3f71f; }
+  .search::placeholder { color: var(--faint); }
+
+  .chips { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; cursor: pointer; user-select: none;
+    font: 600 11px/1 var(--mono); letter-spacing: .04em;
+    color: var(--muted); background: var(--bg-soft);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 12px; transition: all .15s;
+  }
+  .chip:hover { color: var(--ink); border-color: #31436a; }
+  .chip.on { color: #0b1018; background: var(--artifact); border-color: var(--artifact); }
+
+  .spacer { flex: 1; }
+  .count { font-size: 11px; color: var(--faint); white-space: nowrap; }
+  .ctl { display: flex; gap: 6px; }
+  .ctl button {
+    cursor: pointer; font: 600 11px var(--mono); color: var(--muted);
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; transition: all .15s;
+  }
+  .ctl button:hover { color: var(--ink); border-color: #31436a; }
+
+  /* ============================== intro strip ============================== */
+  .intro {
+    position: fixed; top: 56px; left: 18px; z-index: 50;
+    width: 330px; max-height: calc(100vh - 80px); overflow: auto;
+    background: #101827f2; border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px 14px; box-shadow: 0 18px 50px #00000066;
+    transition: transform .25s ease, opacity .25s ease;
+  }
+  .intro.hidden { transform: translateX(-360px); opacity: 0; pointer-events: none; }
+  .intro h1 { font: 700 19px/1.3 var(--serif); margin: 0 0 8px; letter-spacing: .01em; }
+  .intro h1 i { color: var(--artifact); font-style: italic; }
+  .intro p { font: 13px/1.6 var(--serif); color: #aab6c9; margin: 0 0 10px; }
+  .intro .kicker { font: 700 9.5px var(--mono); letter-spacing: .28em; color: var(--artifact); text-transform: uppercase; margin-bottom: 8px; }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin: 10px 0 4px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+  .legend span { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .legend .edge-sw { display: inline-block; width: 16px; height: 0; border-top: 2px solid; margin-right: 6px; vertical-align: 3px; }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .stat { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; background: var(--bg-soft); }
+  .stat b { color: var(--ink); }
+  .intro-close {
+    position: absolute; top: 12px; right: 12px;
+    cursor: pointer; color: var(--muted);
+    background: none; border: 1px solid var(--line); border-radius: 7px;
+    font: 700 11px var(--mono); padding: 3px 8px;
+  }
+  .intro-close:hover { color: var(--ink); }
+  .intro-toggle {
+    position: fixed; top: 66px; left: 18px; z-index: 49;
+    cursor: pointer; font: 700 11px var(--mono); color: var(--muted);
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  }
+  .intro-toggle:hover { color: var(--ink); }
+
+  /* ============================== viewport / canvas ============================== */
+  .viewport {
+    position: fixed; inset: 56px 0 0 0;
+    overflow: auto; cursor: default;
+  }
+  .stage { position: relative; }
+  .canvas {
+    position: absolute; top: 0; left: 0;
+    transform-origin: 0 0;
+    background-image: radial-gradient(circle, #1c2a44 1px, transparent 1.4px);
+    background-size: 26px 26px;
+  }
+
+  .zone {
+    position: absolute; border-radius: 16px;
+    border: 1px dashed #2a3a58;
+    background: #ffffff04;
+    animation: fade .5s ease both;
+  }
+  .zone > b {
+    position: absolute; top: 12px; left: 16px;
+    font: 700 10px var(--mono); letter-spacing: .26em; text-transform: uppercase;
+  }
+  .zone > span {
+    position: absolute; top: 28px; left: 16px;
+    font: 10.5px var(--mono); color: var(--faint);
+  }
+
+  svg.wires { position: absolute; top: 0; left: 0; pointer-events: none; }
+  .wire path { fill: none; stroke: #2b3a55; stroke-width: 1.4; transition: opacity .15s, stroke .15s; }
+  .wire.runtime path { stroke: #3193c2; stroke-dasharray: 6 4; }
+  .wire.fs path { stroke: #b98935; stroke-dasharray: 3 4; }
+  .wire.build path { stroke: #7c5fd3; stroke-dasharray: 8 4; }
+  .wire text { font: 9.5px var(--mono); fill: #4f6079; }
+  .wire.runtime text { fill: #3193c2; }
+  .wire.fs text { fill: #b98935; }
+  .wire.build text { fill: #8d76d8; }
+  .focus .wire { opacity: .07; }
+  .focus .wire.lit { opacity: 1; }
+  .wire.lit path { stroke-width: 2.2; filter: drop-shadow(0 0 4px #4cc3f755); }
+  .wire.dimmed { opacity: .05; }
+
+  /* ============================== nodes ============================== */
+  .node {
+    position: absolute; width: 182px;
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 11px 8px 13px;
+    cursor: grab; user-select: none;
+    transition: opacity .2s, box-shadow .15s, border-color .15s, transform .15s;
+    animation: rise .45s cubic-bezier(.2,.7,.3,1) both;
+    box-shadow: 0 2px 10px #00000040;
+  }
+  .node::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px;
+    border-radius: 3px; background: var(--wc, var(--host));
+  }
+  .node:hover { background: var(--card-hi); border-color: #33476e; transform: translateY(-1px); }
+  .node.dragging { cursor: grabbing; box-shadow: 0 16px 36px #000000aa; z-index: 30; transform: scale(1.02); }
+  .node b { display: block; font: 700 12px/1.3 var(--mono); letter-spacing: .01em; }
+  .node span { display: block; font: 10px/1.45 var(--mono); color: var(--muted); margin-top: 2px; }
+  .node .dots { position: absolute; top: 8px; right: 9px; display: flex; gap: 3px; }
+  .node .dots i { width: 6px; height: 6px; border-radius: 999px; display: block; }
+  .node.artifact { border-style: dashed; background: #141b28; }
+  .node.artifact b { color: var(--artifact); }
+  .focus .node:not(.lit):not(.selected) { opacity: .15; }
+  .node.dim { opacity: .1; pointer-events: none; }
+  .node.selected {
+    border-color: var(--wc, var(--host));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--wc, var(--host)) 22%, transparent), 0 14px 34px #000000aa;
+    z-index: 25;
+  }
+  .node.pulse { animation: pulse .5s ease; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pulse { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+  /* ============================== drawer ============================== */
+  .drawer {
+    position: fixed; top: 56px; right: 0; bottom: 0; z-index: 55;
+    width: 408px; max-width: 92vw;
+    background: #0f1726f7; border-left: 1px solid var(--line);
+    box-shadow: -24px 0 60px #00000088;
+    transform: translateX(440px); transition: transform .28s cubic-bezier(.2,.8,.25,1);
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: none; }
+  .drawer-head {
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--line-soft);
+    position: relative;
+  }
+  .drawer-head::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--wc, var(--host));
+  }
+  .drawer-head h2 { margin: 0; font: 700 16px var(--mono); }
+  .drawer-head .path { font: 11px var(--mono); color: var(--artifact); margin-top: 4px; word-break: break-all; }
+  .drawer-head .close {
+    position: absolute; top: 14px; right: 14px; cursor: pointer;
+    color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 7px;
+    font: 700 12px var(--mono); padding: 4px 9px;
+  }
+  .drawer-head .close:hover { color: var(--ink); }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .badge {
+    font: 700 9.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    border-radius: 5px; padding: 3px 7px; color: #0b1018;
+  }
+  .badge.outline { color: var(--muted); background: none; border: 1px solid var(--line); }
+
+  .drawer-body { overflow-y: auto; padding: 6px 20px 30px; flex: 1; }
+  .drawer-body h3 {
+    font: 700 9.5px var(--mono); letter-spacing: .26em; text-transform: uppercase;
+    color: var(--faint); margin: 20px 0 8px;
+  }
+  .drawer-body p.sum { font: 13.5px/1.65 var(--serif); color: #bcc8db; margin: 14px 0 0; }
+  .drawer-body ul { margin: 0; padding-left: 16px; }
+  .drawer-body li { font: 12px/1.6 var(--mono); color: #a8b4c8; margin-bottom: 5px; }
+  .drawer-body li::marker { color: var(--faint); }
+  .drawer-body code {
+    font-family: var(--mono); font-size: 11px;
+    background: #1b2740; border-radius: 4px; padding: 1px 5px; color: #cfe0ff;
+  }
+  ul.notes li { color: #d8aab2; }
+  ul.notes li::marker { color: var(--rose); }
+  ul.tests li { color: #9ec9ae; }
+  ul.tests li::marker { color: var(--browser); }
+  .linkrow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nlink {
+    cursor: pointer; font: 600 11px var(--mono); color: var(--ink);
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 7px;
+    padding: 5px 9px; transition: all .15s;
+  }
+  .nlink:hover { border-color: var(--host); color: #cfe9fb; }
+  .nlink i { font-style: normal; margin-right: 5px; }
+
+  footer {
+    position: fixed; bottom: 10px; left: 18px; z-index: 40;
+    font: 10px var(--mono); color: var(--faint); pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>acd-tutor <em>/</em> architecture map</b>
+    <span>post-refactor · june 2026</span>
+  </div>
+  <input id="search" class="search" type="search" placeholder="search components… (autosave, sse, catalog)" autocomplete="off">
+  <nav class="chips" id="chips"></nav>
+  <div class="spacer"></div>
+  <span class="count" id="count"></span>
+  <div class="ctl">
+    <button id="zoom-out" title="Zoom out">−</button>
+    <button id="zoom-fit" title="Fit width">fit</button>
+    <button id="zoom-in" title="Zoom in">+</button>
+    <button id="reset" title="Restore default card positions">reset layout</button>
+  </div>
+</header>
+
+<button class="intro-toggle" id="intro-toggle">about this map</button>
+<aside class="intro hidden" id="intro">
+  <button class="intro-close" id="intro-close" title="Close">✕</button>
+  <div class="kicker">How to read this</div>
+  <h1>One system, three compilation worlds, <i>one shared floor.</i></h1>
+  <p>
+    Every card is a module (or a tight cluster of files). Columns are <b>compilation
+    worlds</b> — what gets bundled where decides what may import what. The indigo band at
+    the bottom is <b>layer&nbsp;0</b>: pure data and calculations that every world compiles in.
+  </p>
+  <p>
+    <b>Drag</b> cards to rearrange (positions stick). <b>Hover</b> to isolate a module's wiring.
+    <b>Click</b> for the drill-down: responsibilities, exports, tests, and what a reviewer
+    should poke at. Filter by concern above, or search.
+  </p>
+  <div class="legend">
+    <span><i style="background:var(--shared)"></i>shared layer 0 (pure)</span>
+    <span><i style="background:var(--flue)"></i>flue build world</span>
+    <span><i style="background:var(--host)"></i>host process (bun)</span>
+    <span><i style="background:var(--browser)"></i>browser bundle</span>
+    <span><i style="background:var(--artifact)"></i>runtime artifact</span>
+    <span></span>
+    <span><i class="edge-sw" style="border-color:#3f536f"></i>import</span>
+    <span><i class="edge-sw" style="border-color:#3193c2;border-top-style:dashed"></i>runtime (spawn/HTTP)</span>
+    <span><i class="edge-sw" style="border-color:#b98935;border-top-style:dashed"></i>filesystem</span>
+    <span><i class="edge-sw" style="border-color:#7c5fd3;border-top-style:dashed"></i>bundled into</span>
+  </div>
+  <div class="stats">
+    <span class="stat"><b>3</b> agents</span>
+    <span class="stat"><b>2</b> frontends</span>
+    <span class="stat"><b>3</b> compile worlds</span>
+    <span class="stat"><b>141</b> unit + <b>12</b> e2e tests</span>
+    <span class="stat"><b>0</b> layering violations</span>
+  </div>
+</aside>
+
+<div class="viewport" id="viewport">
+  <div class="stage" id="stage">
+    <div class="canvas" id="canvas"></div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer">
+  <div class="drawer-head" id="drawer-head"></div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<footer>acd-tutor architecture map · generated 2026-06-12 against the post-refactor working tree · single file, zero dependencies</footer>
+
+<script>
+"use strict";
+
+/* ====================================================================== data */
+
+const CANVAS_W = 1760, CANVAS_H = 1110;
+
+const WORLDS = {
+  shared:  { color: "var(--shared)",  label: "layer 0"  },
+  flue:    { color: "var(--flue)",    label: "flue build" },
+  host:    { color: "var(--host)",    label: "host" },
+  browser: { color: "var(--browser)", label: "browser" },
+  artifact:{ color: "var(--artifact)",label: "artifact" },
+};
+
+const CONCERNS = [
+  { id: "identity",     label: "agent identity" },
+  { id: "streaming",    label: "streaming" },
+  { id: "lesson-files", label: "lesson files" },
+  { id: "chat-ui",      label: "chat & UI" },
+  { id: "wiring",       label: "wiring & runtime" },
+];
+
+const ZONES = [
+  { label: "FLUE BUILD", sub: "bundled into dist/server.mjs · agent subprocess", x: 20,   y: 70,  w: 380,  h: 610, color: "var(--flue)" },
+  { label: "HOST PROCESS (BUN)", sub: "builds, spawns & talks to the agent server", x: 420,  y: 70,  w: 580,  h: 610, color: "var(--host)" },
+  { label: "BROWSER", sub: "React SPA · Bun-bundled from the same repo", x: 1020, y: 70,  w: 720,  h: 810, color: "var(--browser)" },
+  { label: "HOST ∩ FLUE BUNDLE", sub: "compiled into both worlds — keep them import-clean", x: 20,   y: 700, w: 980,  h: 180, color: "var(--artifact)" },
+  { label: "SHARED — LAYER 0", sub: "pure data + calculations · no node:* · no process.env · zero imports", x: 20,   y: 910, w: 1720, h: 170, color: "var(--shared)" },
+];
+
+/* Node fields: id, label, sub, path, world(s), kind, concerns, x, y,
+   summary, points (responsibilities/exports), notes (review notes), tests, files. */
+const NODES = [
+
+  /* ---------------- shared layer 0 ---------------- */
+  { id: "catalog", label: "shared/catalog.ts", sub: "agent identity · single source", path: "src/shared/catalog.ts",
+    worlds: ["shared"], kind: "data + calculations", concerns: ["identity"], x: 300, y: 955, w: 230,
+    summary: "The one place agent identity lives. Everything that used to be three unlinked id-keyed maps now derives from this file, and the compiler refuses a missing entry.",
+    points: [
+      "<code>AgentId</code> union + <code>AGENTS satisfies Record&lt;AgentId, AgentDefinition&gt;</code> — forgetting an entry is a compile error",
+      "<code>AgentDefinition</code>: label, greeting, actions, optional <code>workspace</code> (env var, default dir, editor kind), optional <code>course</code>",
+      "<code>isAgentId()</code> / <code>agentDefinition()</code> guards for wire ids",
+      "<code>AgentPresentation</code> + <code>toPresentation()</code> — the wire/menu subset; id stays a plain string so injected agents (e2e tutor-faux) work",
+    ],
+    notes: [
+      "Must stay pure: no node:*, no process.env — the browser bundle AND flue build both compile it, so either bundler breaks loudly if violated",
+      "The Flue trio (stub/profile/skill) can't be derived — Flue discovers agents by filename. The filesystem-consistency test is the guard",
+    ],
+    tests: ["test/shared/catalog.test.ts — calculations + filesystem consistency (AgentId ↔ stub/profile/skill, no orphans)"] },
+
+  { id: "chunks", label: "shared/chunks.ts", sub: "streaming vocabulary", path: "src/shared/chunks.ts",
+    worlds: ["shared"], kind: "data + calculations", concerns: ["streaming"], x: 780, y: 955, w: 230,
+    summary: "The streaming chunk, defined once. Previously this exact shape existed three times (agent-io, console, web client), with a no-op converter papering over the seam.",
+    points: [
+      "<code>AgentChunk</code> = text | debug — what agent-io yields",
+      "<code>StreamFrame</code> = AgentChunk ∪ done | error — what crosses the SSE wire",
+      "<code>parseStreamFrame(raw)</code> → frame or <code>null</code> for malformed input — skip, don't crash",
+    ],
+    notes: ["Adding a frame kind? The parser, the server's emit type, and the client loop all type-check against this one union now — change it here only"],
+    tests: ["test/shared/chunks.test.ts — valid / garbage / wrong-shape → null"] },
+
+  { id: "stream-fold", label: "shared/stream-fold.ts", sub: "reply-stream fold", path: "src/shared/stream-fold.ts",
+    worlds: ["shared"], kind: "calculations", concerns: ["streaming", "chat-ui"], x: 1490, y: 955, w: 230,
+    summary: "The reply-stream fold, shared by the console and web send loops: visible debug lines flush accumulated prose first so the transcript stays chronological; hidden debug lines fold away entirely.",
+    points: [
+      "<code>foldChunk(state, chunk, debugMode)</code> → { state, append } — trivially unit-testable",
+      "<code>finishStream</code> — remaining prose, or the empty-reply message",
+      "<code>FoldedMessage</code> roles (tutor | debug | info) are assignable to both frontends' message shapes",
+    ],
+    notes: [],
+    tests: ["test/shared/stream-fold.test.ts — fold + finish decision tables"] },
+
+  { id: "lesson-names", label: "shared/lesson-names.ts", sub: "filename calculations", path: "src/shared/lesson-names.ts",
+    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files"], x: 1240, y: 955, w: 230,
+    summary: "Pure calculations over lesson filenames, shared by the browser (tabs, dashboard progress) and the host (store listing filter).",
+    points: [
+      "<code>isHiddenFile</code> — dotfiles are host bookkeeping, never lessons",
+      "<code>lessonNumber</code> · <code>sortLessonFiles</code> · <code>latestLessonFile</code>",
+      "<code>courseProgress</code> — highest-numbered file = current lesson",
+    ],
+    notes: [],
+    tests: ["test/shared/lesson-names.test.ts"] },
+
+  /* ---------------- host ∩ flue bundle ---------------- */
+  { id: "workspaces", label: "workspaces.ts", sub: "env resolution over catalog", path: "src/workspaces.ts",
+    worlds: ["host", "flue"], kind: "calculations + env reads", concerns: ["identity", "lesson-files"], x: 70, y: 726,
+    summary: "The one module that reads process.env to resolve catalog workspaces into real scratch dirs. Which agents have a workspace is catalog data; where it lands on disk is decided here.",
+    points: [
+      "<code>workspaceDir(id)</code> — env override (e.g. ACD_TUTOR_SCRATCH_DIR) over the catalog default; null for chat-only agents",
+      "<code>WORKSPACES</code> — derived id → dir map for the web server",
+      "<code>OPEN_MODE</code> — \"editor\" (console, $EDITOR) vs \"web\" (signal file)",
+    ],
+    notes: ["Bundled into the flue server too — keep it free of anything browser- or flue-hostile beyond env reads"],
+    tests: ["Covered indirectly by tools + e2e suites (env overrides exercised by e2e scratch dirs)"] },
+
+  { id: "lesson-files", label: "lesson-files.ts", sub: "THE lesson-file module", path: "src/lesson-files.ts",
+    worlds: ["host", "flue"], kind: "calculations + actions", concerns: ["lesson-files"], x: 330, y: 726,
+    summary: "The single implementation over the scratch dirs. Before the refactor this logic existed twice (agent tools + web/files.ts) with duplicated path-guarding and dotfile filtering; web/files.ts is deleted.",
+    points: [
+      "<code>resolveLessonPath</code> (calc) — basename() collapses ../x and /etc/x to leaf names: the path-traversal guard",
+      "<code>editorCommand</code> (calc) — naive whitespace split + path as its own argv entry; no shell, so paths are never interpreted",
+      "<code>LessonFileStore</code> (actions): list / read / write / requestOpen / takeOpenRequest / openInEditor / clear",
+    ],
+    notes: [
+      "The only module that touches the scratch dir — if disk behavior changes, it changes once",
+      "openInEditor replaced the old shell:true spawn; multi-word $EDITOR (\"zed -w\") verified to split correctly",
+    ],
+    tests: ["test/lesson-files.test.ts — traversal, editorCommand argv shape, open-request round-trip incl. malformed JSON"] },
+
+  { id: "tools", label: "tools.ts", sub: "model sentinel adapter", path: "src/tools.ts",
+    worlds: ["flue", "host"], kind: "actions (thin adapter)", concerns: ["lesson-files"], x: 590, y: 726,
+    summary: "Model-callable tools (listFiles / readFile / writeFile / openFile) as a thin adapter: store results in, sentinels out. Handlers run in the flue server process.",
+    points: [
+      "<code>NO_FILES</code> / <code>FILE_NOT_FOUND</code> sentinels — the model's prompt contract, referenced by the SKILL.md files",
+      "openFile: web mode writes the .open-request signal; editor mode spawns via the store",
+    ],
+    notes: ["Tool descriptions and sentinel strings are part of the prompt — do not rename them casually; the tutors' behavior depends on them"],
+    tests: ["test/tools.test.ts — sentinel mapping per tool, web-mode signal write"] },
+
+  { id: "open-request", label: "open-request.ts", sub: "tool ⇄ web-editor contract", path: "src/open-request.ts",
+    worlds: ["host", "flue"], kind: "data", concerns: ["lesson-files"], x: 330, y: 806,
+    summary: "The contract between the agent's openFile tool (web mode) and the web editor: a hidden dotfile in the scratch dir, consumed once by the client after each reply.",
+    points: ["<code>OPEN_REQUEST_FILE</code> = \".open-request\"", "<code>OpenRequest</code> { filename, requestedAt }"],
+    notes: ["Dotfiles are excluded from every listing, so neither the model nor the student ever sees the signal"],
+    tests: ["Round-trip covered in test/lesson-files.test.ts and the web e2e suite"] },
+
+  { id: "scratch", label: "/tmp/<agent>/scratch", sub: "filesystem seam", path: "(runtime artifact)",
+    worlds: ["artifact"], kind: "state on disk", concerns: ["lesson-files"], x: 770, y: 800, w: 200, artifact: true,
+    summary: "The shared workspace: the tutor's tools and the web editor read and write the same files here. Both sides now reach it through the same LessonFileStore.",
+    points: ["Lesson files (lesson-1.ts …) + the hidden .open-request signal"],
+    notes: ["Default location is /tmp — not cross-platform; override per agent via the catalog's dirEnvVar"],
+    tests: ["e2e suites point this at mkdtemp() dirs"] },
+
+  /* ---------------- flue build world ---------------- */
+  { id: "stubs", label: "agents/<id>.ts ×3", sub: "Flue agent stubs", path: "src/agents/{acd-tutor,argumentative-essay-tutor,socratic-tutor}.ts",
+    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 110, y: 150,
+    summary: "16-line stubs binding model + sandbox + profile. The filename IS the agent id — Flue discovers one agent per top-level file, which is why these can't be generated from the catalog.",
+    points: [
+      "<code>createAgent()</code> with model anthropic/claude-sonnet-4-6 and a local() sandbox",
+      "Exported <code>route</code> middleware opts each agent into HTTP at POST /agents/&lt;name&gt;/:id",
+    ],
+    notes: ["Adding an agent = catalog entry (compile-checked) + this trio (test-checked). The catalog test names exactly what's missing"],
+    tests: ["test/shared/catalog.test.ts — filesystem consistency"],
+    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
+
+  { id: "profiles", label: "profiles/<id>.ts ×3", sub: "instructions · skills · tools", path: "src/agents/profiles/*.ts",
+    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 110, y: 260,
+    summary: "Everything an agent is, minus the model: instructions, its SKILL.md, and (for workbook tutors) the lesson-file tools wired to its workspace.",
+    points: [
+      "<code>defineAgentProfile({ instructions, skills, tools })</code>",
+      "Imports SKILL.md via <code>with { type: \"skill\" }</code>",
+    ],
+    notes: ["The skill import only resolves inside flue build — importing a profile from host code breaks `bun src/main.ts`. This is the hard wall the layering respects"],
+    tests: ["Exercised end-to-end by the faux-agent e2e build"],
+    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
+
+  { id: "skills", label: "skills/<id>/ ×3", sub: "SKILL.md + references", path: "src/skills/*/",
+    worlds: ["flue"], kind: "data (pedagogy)", concerns: ["identity"], x: 110, y: 370,
+    summary: "The tutors' actual teaching behavior. Behavior changes belong here, not in the frontends — the code on this map is deliberately agnostic about what is taught.",
+    points: ["SKILL.md per tutor + reference docs (concept banks, exercise banks, question patterns)"],
+    notes: ["The SKILL.md files reference the tool sentinels (NO_FILES / FILE_NOT_FOUND) — keep prompts and tools.ts in sync"],
+    tests: ["test/shared/catalog.test.ts asserts each skill dir + SKILL.md exists"] },
+
+  { id: "flue-server", label: "dist/server.mjs", sub: "Flue agent server · :3789", path: "(built by `flue build`)",
+    worlds: ["artifact"], kind: "runtime artifact", concerns: ["streaming", "wiring"], x: 100, y: 510, w: 220, artifact: true,
+    summary: "The compiled agent subprocess: HTTP transport at /agents/<name>/:id with SSE streaming. Conversation memory lives here, keyed by instance id — both frontends are stateless about it.",
+    points: ["Bundles: stubs, profiles, skills, tools, lesson-files, workspaces, shared/*"],
+    notes: ["Edits under src/agents/ or src/skills/ need a rebuild — bun start always rebuilds first"],
+    tests: ["e2e builds a faux variant from test/e2e/flue.config.ts so the real one never sees test agents"] },
+
+  /* ---------------- host: entries & transport ---------------- */
+  { id: "main", label: "main.ts", sub: "console entry · composition", path: "src/main.ts",
+    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 446, y: 112,
+    summary: "Console composition root: start the flue server, hand AGENT_CHOICES and a createReply factory to the console. No logic of its own.",
+    points: ["Wires <code>createReply(id)</code> → a fresh AgentSession per chosen agent"],
+    notes: ["Agent lists are passed by injection here (not imported deep down) — that's what lets e2e inject tutor-faux"],
+    tests: ["Composition covered by tutor e2e"] },
+
+  { id: "web-main", label: "web/main.ts", sub: "web entry · composition", path: "src/web/main.ts",
+    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 646, y: 112,
+    summary: "Web composition root: sets TUTOR_OPEN_MODE=web before spawning flue (so openFile signals the editor instead of spawning $EDITOR), then starts the web server on :3790.",
+    points: ["Passes WORKSPACES + AGENT_CHOICES into startWebServer by injection"],
+    notes: ["The env mutation must happen before the flue spawn — ordering is load-bearing and implicit; flagged low-severity in the June review"],
+    tests: ["web e2e mirrors this wiring"] },
+
+  { id: "registry", label: "profiles/registry.ts", sub: "AGENT_CHOICES — derived", path: "src/agents/profiles/registry.ts",
+    worlds: ["host"], kind: "data (derived)", concerns: ["identity", "wiring"], x: 846, y: 112,
+    summary: "One line of derivation: AGENT_LIST.map(toPresentation). Used to be 60 lines of hand-maintained copies of catalog data.",
+    points: ["Host-safe: imports no profiles or SKILL.md"],
+    notes: [],
+    tests: ["toPresentation covered in catalog tests"] },
+
+  { id: "runner", label: "runner.ts", sub: "build · spawn · readiness", path: "src/runner.ts",
+    worlds: ["host"], kind: "actions", concerns: ["wiring"], x: 846, y: 206,
+    summary: "Generic, agent-agnostic server lifecycle: run flue build, spawn dist/server.mjs, poll /openapi.json until ready, own SIGINT/crash/shutdown.",
+    points: ["Returns { baseUrl, client, shutdown }"],
+    notes: ["Untested directly (flagged in the review's optional Phase 5); exercised by both e2e suites"],
+    tests: ["Indirect via e2e server lifecycle"] },
+
+  { id: "agent-io", label: "agent-io.ts", sub: "SSE → AsyncIterable<AgentChunk>", path: "src/agent-io.ts",
+    worlds: ["host"], kind: "actions + calculations", concerns: ["streaming"], x: 846, y: 300,
+    summary: "Transport only: pins an agent + conversation instance over @flue/sdk's streaming invoke and yields the shared AgentChunk type. No printing, no prompting.",
+    points: [
+      "<code>createAgentSession(client, agent, instanceId?, hooks?)</code>",
+      "<code>formatDebugEvent</code> (calc) — one concise line per tool call / turn / log",
+      "hooks.onEvent — the web server captures agent_end for history replay",
+    ],
+    notes: ["Re-exports AgentChunk from shared/chunks for compatibility — the type itself no longer lives here"],
+    tests: ["test/agent-io.test.ts — truncate/formatDebugEvent via __test__, streaming via fixtures"] },
+
+  /* ---------------- host: console frontend ---------------- */
+  { id: "console-index", label: "console/index.tsx", sub: "runConsole · picker → chat", path: "src/console/index.tsx",
+    worlds: ["host"], kind: "actions (UI shell)", concerns: ["chat-ui", "wiring"], x: 446, y: 206,
+    summary: "Renders the agent picker (skipped for a single agent), then the chat for the chosen agent; prints the farewell after exit. Knows nothing about tutors or Flue.",
+    points: ["Takes <code>agents: AgentChoice[]</code> + <code>createReply(id)</code> — fully injected"],
+    notes: [],
+    tests: ["Menu/picker behavior currently untested (Phase 5 debt, deliberate)"] },
+
+  { id: "console-app", label: "console/App.tsx", sub: "slash commands + layout", path: "src/console/App.tsx",
+    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui", "streaming"], x: 446, y: 300,
+    summary: "After Phase 3 this is dispatch and layout only: /exit and /debug act immediately; everything else queues through useChatStream. The transport loop no longer lives in the component.",
+    points: ["The old no-op AgentChunk→ReplyChunk converter is deleted — both are the shared type now"],
+    notes: [],
+    tests: ["test/console/App.test.tsx — greeting, streaming, /debug toggle, FIFO queue, error render"] },
+
+  { id: "use-chat-stream", label: "console/useChatStream.ts", sub: "send loop over the shared fold", path: "src/console/useChatStream.ts",
+    worlds: ["host"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 446, y: 394,
+    summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (shared/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line and error render.",
+    points: [
+      "debugMode is read through a ref so /debug applies mid-reply",
+    ],
+    notes: [],
+    tests: ["Fold covered in test/shared/stream-fold.test.ts; hook exercised via test/console/App.test.tsx"] },
+
+  { id: "console-types", label: "console/types.ts", sub: "aliases of shared types", path: "src/console/types.ts",
+    worlds: ["host"], kind: "data (types)", concerns: ["identity", "chat-ui"], x: 446, y: 488,
+    summary: "AgentChoice, ReplyChunk and ConsoleAction are now aliases of the shared AgentPresentation / AgentChunk / AgentAction. This file being an accidental type hub was the old layering violation's root.",
+    points: ["Still owns the console-only shapes: ConsoleOptions, Message (5 roles)"],
+    notes: ["Nothing outside src/console should import this anymore — the shared layer is the source. (The old web/server.ts import is gone.)"],
+    tests: ["Type-level only; guarded by tsc"] },
+
+  { id: "console-widgets", label: "console/{InputBar,Transcript,…}", sub: "Ink widgets", path: "src/console/*.tsx",
+    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui"], x: 646, y: 300,
+    summary: "The Ink rendering kit: input with word-jump editing, transcript with markdown, menu, spinner.",
+    points: ["TextInput exposes wordStart/wordEnd via __test__"],
+    notes: [],
+    tests: ["test/console/TextInput.test.ts; InputBar/Transcript/Menu untested (Phase 5 debt, deliberate)"],
+    files: ["InputBar.tsx", "Transcript.tsx", "Menu.tsx", "Markdown.tsx", "TextInput.tsx", "Spinner.tsx"] },
+
+  /* ---------------- host: web server ---------------- */
+  { id: "web-server", label: "web/server.ts", sub: "Bun.serve · JSON/SSE API · :3790", path: "src/web/server.ts",
+    worlds: ["host"], kind: "actions", concerns: ["streaming", "lesson-files", "wiring"], x: 810, y: 440,
+    summary: "The browser-facing server: serves the bundled React client and a small API mirroring the console's wiring. Hardened in Phase 3: every JSON body is guard-validated, SSE emits typed StreamFrames, and the session/history maps are capped.",
+    points: [
+      "<code>sseReply</code> — one data: frame per chunk, then done; 15s comment heartbeat",
+      "<code>readJsonBody(req, guard)</code> — 10-line validation helper (zod rejected as overkill)",
+      "<code>MAX_SESSIONS = 100</code> + evictOldest — growth is bounded and documented, not accidental",
+      "Routes: /api/agents, /api/sessions, …/messages (SSE), …/files, …/open-request",
+    ],
+    notes: [
+      "No auth by design: single learner on localhost, same trust model as the console",
+      "Imports the shared catalog type — NOT console types (the old red edge is gone)",
+    ],
+    tests: ["test/web/server.test.ts — body validation + cap eviction on port 0; test/e2e/web.e2e.test.ts — full streaming path"] },
+
+  { id: "web-history", label: "web/history.ts", sub: "transcript accumulation", path: "src/web/history.ts",
+    worlds: ["host"], kind: "calculations", concerns: ["streaming"], x: 810, y: 560,
+    summary: "Maps Flue's normalized messages to the chat transcript. Key subtlety: agent_end carries only that run's new messages, so history accumulates turn by turn — never overwrites.",
+    points: ["<code>toTranscript</code> · <code>appendTurn</code> — an empty turn (error/abort path) leaves history untouched"],
+    notes: [],
+    tests: ["test/web-history.test.ts"] },
+
+  /* ---------------- browser ---------------- */
+  { id: "client-app", label: "client/App.tsx", sub: "screen router", path: "src/web/client/App.tsx",
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["wiring", "chat-ui"], x: 1060, y: 112,
+    summary: "Fetches the agent list, then routes: agents with a workbook editor (agentEditor() over the catalog) get the IDE screen, the rest chat-only.",
+    points: [],
+    notes: [],
+    tests: ["Untested directly (Phase 5 debt)"] },
+
+  { id: "client-api", label: "client/api.ts", sub: "fetch + SSE client", path: "src/web/client/api.ts",
+    worlds: ["browser"], kind: "actions", concerns: ["streaming", "lesson-files"], x: 1290, y: 112,
+    summary: "Thin client for the web API. streamReply was the riskiest code in the old client; Phase 3 fixed all three soft spots.",
+    points: [
+      "<code>streamReply(sessionId, msg, signal?)</code> — guarded parse via parseStreamFrame (malformed frames skipped)",
+      "Stream ending without a done frame throws — a truncated reply can never render as complete",
+      "AbortSignal forwarded to fetch for cancellation",
+    ],
+    notes: ["Heartbeat comments are filtered by the data: prefix check — keep that if the parser changes"],
+    tests: ["test/web/client/api.test.ts — mocked-fetch: happy / malformed / missing-done / error frame / abort"] },
+
+  { id: "client-types", label: "client/types.ts", sub: "aliases of shared types", path: "src/web/client/types.ts",
+    worlds: ["browser"], kind: "data (types)", concerns: ["identity"], x: 1520, y: 112,
+    summary: "AgentInfo and ReplyChunk are aliases of the shared wire shapes — these used to be hand-copied twins that could drift undetected.",
+    points: ["Owns browser-only shapes: ChatMessage, MascotMood, Screen"],
+    notes: [],
+    tests: ["Type-level only; guarded by tsc"] },
+
+  { id: "data-agents", label: "client/data/agents.ts", sub: "cosmetic map + catalog lookups", path: "src/web/client/data/agents.ts",
+    worlds: ["browser"], kind: "data + calculations", concerns: ["identity", "chat-ui"], x: 1060, y: 300,
+    summary: "Shrunk to what the catalog shouldn't know: emoji + Tailwind classes, still compile-checked via satisfies Record<AgentId,…>. Editor kind and course outlines moved into the catalog.",
+    points: ["<code>agentIcon</code> / <code>agentCourse</code> / <code>agentEditor</code> — safe lookups for wire ids", "data/gamification.ts: XP/streak/hearts remain labeled static placeholders"],
+    notes: ["The dead ACD_COURSE_STEPS copy in gamification.ts was deleted in Phase 1"],
+    tests: ["Compile-checked; behavior trivial"] },
+
+  { id: "home-screen", label: "screens/HomeScreen.tsx", sub: "dashboard + course steppers", path: "src/web/client/screens/HomeScreen.tsx",
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1060, y: 206,
+    summary: "Tutor cards + per-course progress steppers, derived from real workspace state via courseProgress over the lesson files.",
+    points: [],
+    notes: ["listLessonFiles errors are swallowed (.catch(() => {})) — a known low-severity item, kept"],
+    tests: ["Untested directly (Phase 5 debt)"] },
+
+  { id: "ide-screen", label: "screens/IdeLessonScreen.tsx", sub: "workbook screen · 216 lines", path: "src/web/client/screens/IdeLessonScreen.tsx",
+    worlds: ["browser"], kind: "actions (layout + wiring)", concerns: ["chat-ui", "lesson-files"], x: 1290, y: 206,
+    summary: "The former 315-line god component, now layout plus wiring between three hooks. Editor choice (CodeMirror vs MDXEditor) comes from the catalog via props.",
+    points: [
+      "openFile / handleSelectFile / start-from-scratch — each defers to useAutosave's flush() and never proceeds past a failed write",
+      "Save status line renders the reducer's SaveState directly",
+    ],
+    notes: ["Both June-review save bugs were here; the fixes live in the hooks below, and this screen just respects flush()'s answer"],
+    tests: ["Behavior pinned via the hook/reducer tests; manual browser pass recommended after UI changes"] },
+
+  { id: "chat-screen", label: "screens/ChatLessonScreen.tsx", sub: "chat-only screen", path: "src/web/client/screens/ChatLessonScreen.tsx",
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 206,
+    summary: "Socratic tutor's full-height conversation card. Shares scaffolding with the IDE screen through LessonScreenShell instead of hand-rolling its own AppBar + menu + confirm.",
+    points: [],
+    notes: [],
+    tests: ["Untested directly (Phase 5 debt)"] },
+
+  { id: "use-agent-chat", label: "hooks/useAgentChat.ts", sub: "conversation over the web API", path: "src/web/client/hooks/useAgentChat.ts",
+    worlds: ["browser"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 1290, y: 300,
+    summary: "The browser counterpart of the console send loop: chunks fold through shared/stream-fold.ts into the streaming bubble and transcript, plus conversation resume. Conversation id persists in localStorage (lib/storage.ts); the transcript itself is always re-fetched from the server.",
+    points: [
+      "Owns the debug-mode toggle (web counterpart of /debug) — state + ref read mid-stream, so toggling applies to the reply in flight",
+      "AbortController per send; aborted on unmount so navigating away cancels the in-flight fetch",
+      "A deliberate abort renders nothing; a dropped connection renders the error bubble — never a truncated reply",
+    ],
+    notes: [],
+    tests: ["Stream edge cases covered at the api.ts layer; hook untested directly"] },
+
+  { id: "shell", label: "LessonScreenShell.tsx", sub: "shared screen scaffolding", path: "src/web/client/components/LessonScreenShell.tsx",
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 300,
+    summary: "AppBar + back navigation + the overflow menu — the debug-mode toggle (no busy guard, applies mid-stream) and “Start from scratch” with its confirm dialog and busy guard — previously ~80 lines duplicated across both lesson screens.",
+    points: [],
+    notes: [],
+    tests: ["Covered by usage; trivial logic"] },
+
+  { id: "use-file-sync", label: "hooks/useLessonFileSync.ts", sub: "planSync (pure) + executor", path: "src/web/client/hooks/useLessonFileSync.ts",
+    worlds: ["browser"], kind: "calculations + hook", concerns: ["lesson-files"], x: 1060, y: 394,
+    summary: "Keeps the editor in step with the tutor's workspace after every reply. The decision tree — open-request wins → first file → newer-and-clean → tutor-rewrote-current — is the pure planSync, pinned by a decision-table test before the extraction.",
+    points: [
+      "<code>planSync({files, openRequest, active, dirty})</code> → none | open | toast | refresh",
+      "Executor flushes before any switch and stays put (with a toast) if the flush fails",
+    ],
+    notes: ["Never yanks a dirty editor: a newer lesson mid-edit becomes a toast, not a switch"],
+    tests: ["test/web/client/planSync.test.ts — full decision table pinning pre-refactor behavior"] },
+
+  { id: "use-autosave", label: "hooks/useAutosave.ts", sub: "debounce · flush() → bool", path: "src/web/client/hooks/useAutosave.ts",
+    worlds: ["browser"], kind: "actions (hook)", concerns: ["lesson-files"], x: 1290, y: 394,
+    summary: "Drives the autosave reducer with timers and writes: save 1s after typing goes quiet, one automatic retry after a failure, and a flush() whose boolean answer callers must respect.",
+    points: [
+      "<code>flush()</code> returns false on a failed write — the fix for the June review's silent-data-loss bug (callers no longer overwrite the editor)",
+      "Retry nonce re-arms the effect once on error — the fix for the dead-end error state",
+      "<code>markSaved(content)</code> resets the on-disk baseline (open / tutor rewrite / wipe)",
+    ],
+    notes: [],
+    tests: ["Reducer fully tested in lib/autosave; timing paths exercised manually"] },
+
+  { id: "lib-autosave", label: "lib/autosave.ts", sub: "save-state reducer (pure)", path: "src/web/client/lib/autosave.ts",
+    worlds: ["browser"], kind: "calculations", concerns: ["lesson-files"], x: 1290, y: 488,
+    summary: "The autosave lifecycle as an explicit machine: idle → unsaved → saving → saved | error. What used to be implicit across useState + three refs is now five states and five events.",
+    points: ["<code>nextSaveState(state, event)</code> — note saved-with-concurrent-edit lands back in unsaved, not saved"],
+    notes: [],
+    tests: ["test/web/client/autosave.test.ts — full transition table"] },
+
+  { id: "components", label: "client/components/*", sub: "chat panel · editors · chrome", path: "src/web/client/components/",
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 394,
+    summary: "The rendering kit: chat panel/sheet with markdown, CodeMirror + MDXEditor wrappers, file tabs, mascot, toasts, app bar, options menu.",
+    points: [],
+    notes: [],
+    tests: ["Untested directly (Phase 5 debt, deliberate)"],
+    files: ["AppBar.tsx", "OptionsMenu.tsx", "Toast.tsx", "Mascot.tsx", "chat/ChatPanel.tsx", "chat/ChatSheet.tsx", "chat/Markdown.tsx", "lesson/CodeEditor.tsx", "lesson/MarkdownEditor.tsx", "lesson/FileTabs.tsx", "CodeBuddyLogo.tsx"] },
+];
+
+/* Edges: [from, to, kind?, label?] — kind: import (default) | runtime | fs | build */
+const EDGES = [
+  ["workspaces", "catalog"],
+  ["registry", "catalog"],
+  ["console-types", "catalog"], ["console-types", "chunks"],
+  ["client-types", "catalog"], ["client-types", "chunks"],
+  ["data-agents", "catalog"],
+  ["agent-io", "chunks"],
+  ["client-api", "chunks"], ["client-api", "client-types"],
+  ["web-server", "catalog"], ["web-server", "chunks"],
+  ["lesson-files", "open-request"], ["lesson-files", "lesson-names"],
+  ["tools", "lesson-files"],
+  ["use-file-sync", "lesson-names"],
+  ["home-screen", "lesson-names"],
+
+  ["stubs", "profiles"],
+  ["profiles", "skills"], ["profiles", "tools"], ["profiles", "workspaces"],
+  ["stubs", "flue-server", "build", "bundled"],
+
+  ["runner", "flue-server", "runtime", "build · spawn · poll"],
+  ["agent-io", "flue-server", "runtime", "HTTP · SSE invoke"],
+  ["lesson-files", "scratch", "fs", "the only disk path"],
+
+  ["main", "registry"], ["main", "runner"], ["main", "agent-io"], ["main", "console-index"],
+  ["web-main", "registry"], ["web-main", "runner"], ["web-main", "workspaces"], ["web-main", "web-server"],
+
+  ["console-index", "console-app"], ["console-index", "console-widgets"], ["console-index", "console-types"],
+  ["console-app", "use-chat-stream"], ["console-app", "console-widgets"], ["console-app", "console-types"],
+  ["use-chat-stream", "console-types"], ["use-chat-stream", "stream-fold"],
+  ["stream-fold", "chunks"],
+
+  ["web-server", "agent-io"], ["web-server", "lesson-files"], ["web-server", "web-history"],
+  ["web-server", "client-app", "build", "bundles index.html"],
+  ["client-api", "web-server", "runtime", "fetch + SSE"],
+
+  ["client-app", "client-api"], ["client-app", "data-agents"],
+  ["client-app", "home-screen"], ["client-app", "ide-screen"], ["client-app", "chat-screen"],
+  ["home-screen", "client-api"], ["home-screen", "data-agents"],
+  ["ide-screen", "client-api"], ["ide-screen", "use-agent-chat"], ["ide-screen", "use-autosave"],
+  ["ide-screen", "use-file-sync"], ["ide-screen", "shell"], ["ide-screen", "components"],
+  ["chat-screen", "use-agent-chat"], ["chat-screen", "shell"], ["chat-screen", "components"],
+  ["use-agent-chat", "client-api"], ["use-agent-chat", "stream-fold"],
+  ["use-autosave", "client-api"], ["use-autosave", "lib-autosave"],
+  ["use-file-sync", "client-api"],
+  ["shell", "components"],
+];
+
+/* ====================================================================== build */
+
+const $  = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+const canvas = $("#canvas"), stage = $("#stage"), viewport = $("#viewport");
+canvas.style.width = CANVAS_W + "px";
+canvas.style.height = CANVAS_H + "px";
+
+const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
+const POS_KEY = "acd-arch-positions-v1";
+const defaults = Object.fromEntries(NODES.map((n) => [n.id, { x: n.x, y: n.y }]));
+try {
+  const saved = JSON.parse(localStorage.getItem(POS_KEY) || "{}");
+  for (const id in saved) if (byId[id]) Object.assign(byId[id], saved[id]);
+} catch {}
+
+ZONES.forEach((z) => {
+  const el = document.createElement("div");
+  el.className = "zone";
+  el.style.cssText = `left:${z.x}px;top:${z.y}px;width:${z.w}px;height:${z.h}px;`;
+  el.innerHTML = `<b style="color:${z.color}">${esc(z.label)}</b><span>${esc(z.sub)}</span>`;
+  canvas.appendChild(el);
+});
+
+const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+svg.classList.add("wires");
+svg.setAttribute("width", CANVAS_W);
+svg.setAttribute("height", CANVAS_H);
+svg.innerHTML = `<defs>
+  <marker id="m-import" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3f536f"/></marker>
+  <marker id="m-runtime" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3193c2"/></marker>
+  <marker id="m-fs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#b98935"/></marker>
+  <marker id="m-build" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7c5fd3"/></marker>
+</defs>`;
+canvas.appendChild(svg);
+
+const edgeEls = EDGES.map(([from, to, kind = "import", label]) => {
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", `wire ${kind}`);
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("marker-end", `url(#m-${kind})`);
+  g.appendChild(path);
+  let text = null;
+  if (label) {
+    text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.textContent = label;
+    g.appendChild(text);
+  }
+  svg.appendChild(g);
+  return { from, to, kind, g, path, text };
+});
+
+const nodeEls = {};
+NODES.forEach((n, i) => {
+  const el = document.createElement("div");
+  el.className = "node" + (n.artifact ? " artifact" : "");
+  el.dataset.id = n.id;
+  const wc = WORLDS[n.worlds[0]].color;
+  el.style.cssText = `left:${n.x}px;top:${n.y}px;--wc:${wc};animation-delay:${i * 14}ms;` + (n.w ? `width:${n.w}px;` : "");
+  el.innerHTML =
+    `<div class="dots">${n.worlds.map((w) => `<i style="background:${WORLDS[w].color}" title="${WORLDS[w].label}"></i>`).join("")}</div>` +
+    `<b>${esc(n.label)}</b><span>${esc(n.sub)}</span>`;
+  canvas.appendChild(el);
+  nodeEls[n.id] = el;
+});
+
+/* ====================================================================== edges */
+
+function rectOf(id) {
+  const el = nodeEls[id], n = byId[id];
+  return { x: n.x, y: n.y, w: el.offsetWidth, h: el.offsetHeight };
+}
+
+function updateEdges() {
+  for (const e of edgeEls) {
+    const a = rectOf(e.from), b = rectOf(e.to);
+    const acx = a.x + a.w / 2, acy = a.y + a.h / 2;
+    const bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+    const dx = bcx - acx, dy = bcy - acy;
+    let x1, y1, x2, y2, d;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      x1 = dx > 0 ? a.x + a.w : a.x;  y1 = acy;
+      x2 = dx > 0 ? b.x : b.x + b.w;  y2 = bcy;
+      const c = Math.max(34, Math.abs(x2 - x1) * 0.42) * (dx > 0 ? 1 : -1);
+      d = `M${x1} ${y1} C ${x1 + c} ${y1}, ${x2 - c} ${y2}, ${x2} ${y2}`;
+    } else {
+      x1 = acx; y1 = dy > 0 ? a.y + a.h : a.y;
+      x2 = bcx; y2 = dy > 0 ? b.y : b.y + b.h;
+      const c = Math.max(30, Math.abs(y2 - y1) * 0.42) * (dy > 0 ? 1 : -1);
+      d = `M${x1} ${y1} C ${x1} ${y1 + c}, ${x2} ${y2 - c}, ${x2} ${y2}`;
+    }
+    e.path.setAttribute("d", d);
+    if (e.text) {
+      e.text.setAttribute("x", (x1 + x2) / 2 + 8);
+      e.text.setAttribute("y", (y1 + y2) / 2 - 6);
+    }
+  }
+}
+
+/* ====================================================================== zoom */
+
+let scale = 1;
+function applyZoom(s) {
+  scale = Math.min(1.6, Math.max(0.35, s));
+  canvas.style.transform = `scale(${scale})`;
+  stage.style.width = CANVAS_W * scale + "px";
+  stage.style.height = CANVAS_H * scale + "px";
+}
+function fit() { applyZoom((viewport.clientWidth - 24) / CANVAS_W); }
+$("#zoom-in").onclick = () => applyZoom(scale * 1.18);
+$("#zoom-out").onclick = () => applyZoom(scale / 1.18);
+$("#zoom-fit").onclick = fit;
+
+/* ====================================================================== drag */
+
+let drag = null;
+canvas.addEventListener("pointerdown", (ev) => {
+  const el = ev.target.closest(".node");
+  if (!el) return;
+  const n = byId[el.dataset.id];
+  drag = { n, el, startX: ev.clientX, startY: ev.clientY, ox: n.x, oy: n.y, moved: false };
+  el.setPointerCapture(ev.pointerId);
+});
+canvas.addEventListener("pointermove", (ev) => {
+  if (!drag) return;
+  const dx = (ev.clientX - drag.startX) / scale, dy = (ev.clientY - drag.startY) / scale;
+  if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+  drag.moved = true;
+  drag.el.classList.add("dragging");
+  drag.n.x = Math.round(Math.min(CANVAS_W - 60, Math.max(0, drag.ox + dx)));
+  drag.n.y = Math.round(Math.min(CANVAS_H - 40, Math.max(0, drag.oy + dy)));
+  drag.el.style.left = drag.n.x + "px";
+  drag.el.style.top = drag.n.y + "px";
+  updateEdges();
+});
+canvas.addEventListener("pointerup", () => {
+  if (!drag) return;
+  drag.el.classList.remove("dragging");
+  if (drag.moved) {
+    const pos = {};
+    NODES.forEach((n) => { pos[n.id] = { x: n.x, y: n.y }; });
+    try { localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch {}
+  } else {
+    select(drag.n.id);
+  }
+  drag = null;
+});
+
+$("#reset").onclick = () => {
+  try { localStorage.removeItem(POS_KEY); } catch {}
+  NODES.forEach((n) => {
+    Object.assign(n, defaults[n.id]);
+    nodeEls[n.id].style.left = n.x + "px";
+    nodeEls[n.id].style.top = n.y + "px";
+  });
+  updateEdges();
+};
+
+/* ====================================================================== hover highlight */
+
+function neighbors(id) {
+  const set = new Set([id]);
+  for (const e of EDGES) {
+    if (e[0] === id) set.add(e[1]);
+    if (e[1] === id) set.add(e[0]);
+  }
+  return set;
+}
+let hoverLock = false;
+canvas.addEventListener("pointerover", (ev) => {
+  const el = ev.target.closest(".node");
+  if (!el || drag || hoverLock) return;
+  const id = el.dataset.id, near = neighbors(id);
+  canvas.classList.add("focus");
+  for (const nid in nodeEls) nodeEls[nid].classList.toggle("lit", near.has(nid));
+  for (const e of edgeEls) e.g.classList.toggle("lit", e.from === id || e.to === id);
+});
+canvas.addEventListener("pointerout", (ev) => {
+  if (ev.target.closest(".node") && !hoverLock) clearFocus();
+});
+function clearFocus() {
+  canvas.classList.remove("focus");
+  for (const nid in nodeEls) nodeEls[nid].classList.remove("lit");
+  for (const e of edgeEls) e.g.classList.remove("lit");
+}
+
+/* ====================================================================== drawer */
+
+const drawer = $("#drawer");
+let selected = null;
+
+function select(id) {
+  selected = id;
+  const n = byId[id];
+  for (const nid in nodeEls) nodeEls[nid].classList.toggle("selected", nid === id);
+  nodeEls[id].classList.remove("pulse"); void nodeEls[id].offsetWidth;
+  nodeEls[id].classList.add("pulse");
+
+  const deps = EDGES.filter((e) => e[0] === id).map((e) => e[1]);
+  const used = EDGES.filter((e) => e[1] === id).map((e) => e[0]);
+  const wc = WORLDS[n.worlds[0]].color;
+
+  $("#drawer-head").style.setProperty("--wc", wc);
+  $("#drawer-head").innerHTML =
+    `<button class="close" id="drawer-close">esc</button>` +
+    `<h2>${esc(n.label)}</h2><div class="path">${esc(n.path)}</div>` +
+    `<div class="badges">` +
+      n.worlds.map((w) => `<span class="badge" style="background:${WORLDS[w].color}">${WORLDS[w].label}</span>`).join("") +
+      `<span class="badge outline">${esc(n.kind)}</span>` +
+      n.concerns.map((c) => `<span class="badge outline">${esc(CONCERNS.find((x) => x.id === c)?.label ?? c)}</span>`).join("") +
+    `</div>`;
+
+  const li = (arr) => arr.map((x) => `<li>${x}</li>`).join("");
+  const links = (ids) => ids.length
+    ? `<div class="linkrow">${ids.map((d) => `<button class="nlink" data-go="${d}"><i>↳</i>${esc(byId[d].label)}</button>`).join("")}</div>`
+    : `<div class="linkrow"><span style="font-size:11px;color:var(--faint)">— none —</span></div>`;
+
+  $("#drawer-body").innerHTML =
+    `<p class="sum">${n.summary}</p>` +
+    (n.points?.length ? `<h3>Responsibilities &amp; exports</h3><ul>${li(n.points)}</ul>` : "") +
+    (n.files?.length ? `<h3>Files</h3><ul>${li(n.files.map(esc))}</ul>` : "") +
+    `<h3>Depends on</h3>${links(deps)}` +
+    `<h3>Used by</h3>${links(used)}` +
+    (n.notes?.length ? `<h3>Review notes</h3><ul class="notes">${li(n.notes)}</ul>` : "") +
+    (n.tests?.length ? `<h3>Tests</h3><ul class="tests">${li(n.tests.map(esc))}</ul>` : "");
+
+  drawer.classList.add("open");
+  $("#drawer-close").onclick = deselect;
+  drawer.querySelectorAll("[data-go]").forEach((b) => {
+    b.onclick = () => select(b.dataset.go);
+  });
+
+  hoverLock = true;
+  const near = neighbors(id);
+  canvas.classList.add("focus");
+  for (const nid in nodeEls) nodeEls[nid].classList.toggle("lit", near.has(nid));
+  for (const e of edgeEls) e.g.classList.toggle("lit", e.from === id || e.to === id);
+}
+
+function deselect() {
+  selected = null;
+  hoverLock = false;
+  drawer.classList.remove("open");
+  for (const nid in nodeEls) nodeEls[nid].classList.remove("selected");
+  clearFocus();
+}
+viewport.addEventListener("pointerdown", (ev) => {
+  if (!ev.target.closest(".node")) deselect();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") deselect();
+});
+
+/* ====================================================================== filters */
+
+const chipsEl = $("#chips");
+let activeConcern = null, query = "";
+
+chipsEl.innerHTML =
+  `<span class="chip on" data-c="">all</span>` +
+  CONCERNS.map((c) => `<span class="chip" data-c="${c.id}">${esc(c.label)}</span>`).join("");
+
+chipsEl.addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".chip");
+  if (!chip) return;
+  chipsEl.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+  chip.classList.add("on");
+  activeConcern = chip.dataset.c || null;
+  applyFilter();
+});
+
+$("#search").addEventListener("input", (ev) => {
+  query = ev.target.value.trim().toLowerCase();
+  applyFilter();
+});
+
+function matches(n) {
+  if (activeConcern && !n.concerns.includes(activeConcern)) return false;
+  if (!query) return true;
+  return (n.label + " " + n.sub + " " + n.path + " " + n.summary).toLowerCase().includes(query);
+}
+
+function applyFilter() {
+  let shown = 0;
+  for (const n of NODES) {
+    const ok = matches(n);
+    nodeEls[n.id].classList.toggle("dim", !ok);
+    if (ok) shown++;
+  }
+  for (const e of edgeEls) {
+    e.g.classList.toggle("dimmed", !(matches(byId[e.from]) && matches(byId[e.to])));
+  }
+  $("#count").textContent = `${shown} / ${NODES.length} components`;
+}
+
+/* ====================================================================== intro toggle */
+
+/* Closed by default; the open/closed choice persists across visits. */
+const intro = $("#intro"), introToggle = $("#intro-toggle");
+const INTRO_KEY = "acd-arch-intro-open";
+
+function setIntro(open) {
+  intro.classList.toggle("hidden", !open);
+  introToggle.hidden = open;
+  try { localStorage.setItem(INTRO_KEY, open ? "1" : "0"); } catch {}
+}
+try { if (localStorage.getItem(INTRO_KEY) === "1") setIntro(true); } catch {}
+introToggle.onclick = () => setIntro(true);
+$("#intro-close").onclick = () => setIntro(false);
+intro.addEventListener("dblclick", () => setIntro(false));
+canvas.addEventListener("pointerdown", () => { if (!intro.classList.contains("hidden")) setIntro(false); });
+
+/* ====================================================================== go */
+
+fit();
+applyFilter();
+requestAnimationFrame(updateEdges);
+window.addEventListener("resize", () => { /* keep current zoom; user controls fit */ });
+</script>
+</body>
+</html>

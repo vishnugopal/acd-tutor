@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchAgents } from "./api";
 import { Mascot } from "./components/Mascot";
-import { AGENT_UI } from "./data/agents";
+import { agentEditor } from "./data/agents";
 import { ChatLessonScreen } from "./screens/ChatLessonScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { IdeLessonScreen } from "./screens/IdeLessonScreen";
@@ -50,7 +50,7 @@ export function App() {
     body = <HomeScreen agents={agents} onSelect={openLesson} />;
   } else {
     // Agents with a workbook editor get the IDE layout; the rest chat-only.
-    const editorKind = AGENT_UI[screen.agent.id]?.editor;
+    const editorKind = agentEditor(screen.agent.id);
     body = editorKind ? (
       <IdeLessonScreen
         agent={screen.agent}

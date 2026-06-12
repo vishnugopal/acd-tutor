@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>acd-tutor — Architecture Review</title>
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --ink: #1c2433;
+    --ink-soft: #5b6577;
+    --line: #e3e7ef;
+    --accent: #4f46e5;
+
+    /* layer palette */
+    --c-entry: #475569;   /* slate  — entry points        */
+    --c-flue: #8b5cf6;    /* violet — flue-build bundle   */
+    --c-transport: #0284c7; /* sky  — runner / agent-io   */
+    --c-console: #d97706; /* amber  — console TUI         */
+    --c-web: #059669;     /* green  — web server + client */
+    --c-shared: #4f46e5;  /* indigo — shared config/types */
+
+    --sev-high: #dc2626;
+    --sev-med: #d97706;
+    --sev-low: #64748b;
+    --good: #059669;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  code { background: #eef1f7; border-radius: 5px; padding: 1px 6px; font-size: .85em; }
+  pre {
+    background: #0f172a0d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  pre code { background: none; padding: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: #ffffffe6; backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 4px;
+    padding: 8px 20px; overflow-x: auto; white-space: nowrap;
+  }
+  nav .brand { font-weight: 700; margin-right: 14px; font-size: 14px; }
+  nav a {
+    color: var(--ink-soft); font-size: 13px; padding: 5px 10px; border-radius: 999px;
+  }
+  nav a.on { background: var(--accent); color: #fff; }
+  nav a:hover { text-decoration: none; color: var(--ink); }
+  nav a.on:hover { color: #fff; }
+
+  /* ---------- layout ---------- */
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 120px; }
+  section { margin-top: 72px; scroll-margin-top: 70px; }
+  h1 { font-size: 34px; line-height: 1.2; margin: 18px 0 6px; letter-spacing: -.02em; }
+  h2 { font-size: 25px; margin: 0 0 4px; letter-spacing: -.015em; }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  .kicker {
+    text-transform: uppercase; letter-spacing: .14em; font-size: 11.5px;
+    font-weight: 700; color: var(--accent);
+  }
+  .lede { color: var(--ink-soft); max-width: 78ch; margin: 6px 0 22px; }
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 22px; box-shadow: 0 1px 2px #0f172a0a;
+  }
+  .ref { color: var(--ink-soft); font-size: 12.5px; }
+  .ref code { background: #eef1f7; }
+
+  /* ---------- hero stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 26px 0 8px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 26px; letter-spacing: -.02em; }
+  .stat span { font-size: 12.5px; color: var(--ink-soft); }
+  .stat.hot b { color: var(--sev-high); }
+
+  /* ---------- chips ---------- */
+  .chip {
+    display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px;
+    padding: 2px 9px; letter-spacing: .04em; vertical-align: middle;
+  }
+  .chip.high { background: #fee2e2; color: var(--sev-high); }
+  .chip.med  { background: #fef3c7; color: #92400e; }
+  .chip.low  { background: #e2e8f0; color: #334155; }
+  .chip.phase{ background: #e0e7ff; color: #3730a3; }
+  .chip.good { background: #d1fae5; color: #065f46; }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--ink-soft); margin: 10px 2px 0; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
+
+  /* ---------- svg base ---------- */
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  svg .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  /* dependency graph interactivity */
+  #depgraph .node { cursor: pointer; transition: opacity .15s; }
+  #depgraph .edge { transition: opacity .15s; }
+  #depgraph.focus .node:not(.lit) { opacity: .14; }
+  #depgraph.focus .edge:not(.lit) { opacity: .07; }
+  #depgraph .edge.lit path { stroke-width: 2.4; }
+  .hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; }
+
+  /* ---------- journey cards ---------- */
+  .journey { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-top: 16px; }
+  .jcard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; position: relative; }
+  .jcard .n {
+    position: absolute; top: -12px; left: 14px; width: 26px; height: 26px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .jcard.keep .n { background: var(--good); }
+  .jcard h4 { margin: 6px 0 6px; font-size: 14px; }
+  .jcard p { margin: 0 0 8px; font-size: 13px; color: var(--ink-soft); }
+  .jcard .forget { font-size: 12.5px; color: var(--sev-high); background: #fef2f2; border-radius: 8px; padding: 7px 10px; }
+  .jcard .forget b { font-weight: 700; }
+  .jcard.keep .forget { color: #065f46; background: #ecfdf5; }
+
+  /* ---------- gap inventory ---------- */
+  .filters { display: flex; gap: 8px; margin: 14px 0 18px; flex-wrap: wrap; }
+  .filters button {
+    border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
+    border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .filters button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .gaps { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .gap { background: var(--card); border: 1px solid var(--line); border-left-width: 4px; border-radius: 12px; padding: 14px 16px; }
+  .gap.sev-high { border-left-color: var(--sev-high); }
+  .gap.sev-med  { border-left-color: var(--sev-med); }
+  .gap.sev-low  { border-left-color: var(--sev-low); }
+  .gap h4 { margin: 0 0 6px; font-size: 14.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .gap p { margin: 0 0 8px; font-size: 13px; color: var(--ink-soft); }
+  [data-f="high"] .gap:not(.sev-high),
+  [data-f="med"]  .gap:not(.sev-med),
+  [data-f="low"]  .gap:not(.sev-low) { display: none; }
+
+  /* ---------- before / after toggle ---------- */
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
+  .toggle button {
+    border: 0; background: var(--card); padding: 8px 22px; font-size: 13.5px; font-weight: 600;
+    color: var(--ink-soft); cursor: pointer;
+  }
+  .toggle button.on { background: var(--accent); color: #fff; }
+  .pane { display: none; }
+  .pane.on { display: block; }
+
+  /* ---------- roadmap ---------- */
+  .roadmap { position: relative; margin-top: 20px; padding-left: 34px; }
+  .roadmap::before { content: ""; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+  .phase { position: relative; margin-bottom: 26px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .phase::before {
+    content: ""; position: absolute; left: -30px; top: 22px; width: 16px; height: 16px;
+    border-radius: 999px; background: var(--accent); border: 3px solid var(--bg);
+  }
+  .phase.opt::before { background: #94a3b8; }
+  .phase h4 { margin: 0 0 4px; font-size: 16px; }
+  .phase .files { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .fchip { font-size: 11.5px; border-radius: 7px; padding: 3px 9px; font-family: ui-monospace, Menlo, monospace; }
+  .fchip.new { background: #d1fae5; color: #065f46; }
+  .fchip.mod { background: #e0e7ff; color: #3730a3; }
+  .fchip.del { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+  .phase .meta { font-size: 13px; color: var(--ink-soft); }
+  .phase .meta b { color: var(--ink); }
+
+  /* ---------- don't cards ---------- */
+  .donts { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .dont { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .dont h4 { margin: 0 0 6px; font-size: 14px; }
+  .dont h4::before { content: "✕ "; color: var(--sev-high); }
+  .dont p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+
+  footer { margin-top: 90px; color: var(--ink-soft); font-size: 12.5px; text-align: center; }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <span class="brand">acd-tutor · architecture</span>
+  <a href="#overview">Overview</a>
+  <a href="#depgraph-s">Dependencies</a>
+  <a href="#journey">Adding an agent</a>
+  <a href="#types">Type duplication</a>
+  <a href="#streaming">Streaming</a>
+  <a href="#savesync">Save &amp; sync</a>
+  <a href="#gaps">Gap inventory</a>
+  <a href="#target">Target</a>
+  <a href="#roadmap">Roadmap</a>
+  <a href="#donts">Anti-goals</a>
+</nav>
+
+<main>
+
+<!-- ================================================================ HERO -->
+<header>
+  <div class="kicker">Architecture review · June 2026</div>
+  <h1>acd-tutor — how it's built, where it creaks,<br>and how to restructure it</h1>
+  <p class="lede">
+    A senior-engineer read of the codebase: an agentic tutor on the Flue framework with two frontends
+    (Ink console + React web). The bones are good — clear layering, small modules, real tests.
+    Three systemic issues make change harder than it should be: <b>agent identity scattered as strings
+    across ~7 files</b>, <b>the same transport types defined three times</b> (with one genuine layering
+    violation), and <b>one 315-line god component hiding two real save bugs</b> — one of which can
+    silently lose a student's work.
+  </p>
+  <div class="stats">
+    <div class="stat"><b>~30</b><span>source modules</span></div>
+    <div class="stat"><b>~580</b><span>LOC backend (excl. web client)</span></div>
+    <div class="stat"><b>3</b><span>agents · 2 frontends · 1 framework</span></div>
+    <div class="stat hot"><b>3</b><span>high-severity findings</span></div>
+    <div class="stat"><b>9</b><span>medium</span></div>
+    <div class="stat"><b>6</b><span>low</span></div>
+  </div>
+</header>
+
+<!-- ================================================================ OVERVIEW -->
+<section id="overview">
+  <div class="kicker">1 · System overview</div>
+  <h2>Three compilation worlds, two processes, one filesystem seam</h2>
+  <p class="lede">
+    The most load-bearing fact about this codebase: source files live in <b>three different
+    compilation worlds</b>. Some are bundled by <code>flue build</code> into the agent subprocess,
+    some run on the Bun host, some are bundled for the browser — and a few
+    (<code>tools.ts</code>, <code>workspaces.ts</code>, <code>open-request.ts</code>) straddle worlds.
+    Every refactoring decision below respects these boundaries.
+  </p>
+  <div class="panel">
+    <svg viewBox="0 0 1140 560" role="img" aria-label="System overview diagram">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+        </marker>
+        <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#0284c7"/>
+        </marker>
+      </defs>
+
+      <!-- zones -->
+      <rect x="10" y="20" width="360" height="430" rx="14" fill="#f5f3ff" stroke="#ddd6fe"/>
+      <text x="28" y="48" font-size="13" font-weight="700" fill="#6d28d9">FLUE BUILD → dist/server.mjs</text>
+      <text x="28" y="66" font-size="11" fill="#7c3aed">subprocess · port 3789 · owns conversation memory</text>
+
+      <rect x="395" y="20" width="370" height="430" rx="14" fill="#f0f9ff" stroke="#bae6fd"/>
+      <text x="413" y="48" font-size="13" font-weight="700" fill="#0369a1">HOST PROCESS (bun)</text>
+      <text x="413" y="66" font-size="11" fill="#0284c7">builds, spawns &amp; talks to the agent server</text>
+
+      <rect x="790" y="20" width="340" height="430" rx="14" fill="#ecfdf5" stroke="#a7f3d0"/>
+      <text x="808" y="48" font-size="13" font-weight="700" fill="#047857">BROWSER</text>
+      <text x="808" y="66" font-size="11" fill="#059669">React SPA, bundled by Bun from the same repo</text>
+
+      <!-- flue zone content -->
+      <rect x="35" y="90" width="150" height="44" rx="9" fill="#fff" stroke="#c4b5fd"/>
+      <text x="110" y="109" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2433">src/skills/*/</text>
+      <text x="110" y="124" text-anchor="middle" font-size="10.5" fill="#5b6577" class="mono">SKILL.md ×3</text>
+
+      <rect x="35" y="160" width="150" height="44" rx="9" fill="#fff" stroke="#c4b5fd"/>
+      <text x="110" y="179" text-anchor="middle" font-size="12" font-weight="600">profiles/ ×3</text>
+      <text x="110" y="194" text-anchor="middle" font-size="10.5" fill="#5b6577">instructions·skills·tools</text>
+
+      <rect x="35" y="230" width="150" height="44" rx="9" fill="#fff" stroke="#c4b5fd"/>
+      <text x="110" y="249" text-anchor="middle" font-size="12" font-weight="600">agents/*.ts ×3</text>
+      <text x="110" y="264" text-anchor="middle" font-size="10.5" fill="#5b6577">16-line stubs, 94% identical</text>
+
+      <rect x="210" y="160" width="140" height="44" rx="9" fill="#fff" stroke="#c4b5fd"/>
+      <text x="280" y="179" text-anchor="middle" font-size="12" font-weight="600" class="mono">tools.ts</text>
+      <text x="280" y="194" text-anchor="middle" font-size="10.5" fill="#5b6577">lesson-file tools</text>
+
+      <rect x="210" y="230" width="140" height="44" rx="9" fill="#fff" stroke="#c4b5fd"/>
+      <text x="280" y="249" text-anchor="middle" font-size="12" font-weight="600" class="mono">workspaces.ts</text>
+      <text x="280" y="264" text-anchor="middle" font-size="10.5" fill="#5b6577">scratch dirs · OPEN_MODE</text>
+
+      <path d="M110 134 L110 160" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M110 204 L110 230" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M185 182 L210 182" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M185 252 L210 252" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+
+      <rect x="35" y="330" width="315" height="48" rx="9" fill="#ede9fe" stroke="#a78bfa" stroke-dasharray="5 3"/>
+      <text x="192" y="350" text-anchor="middle" font-size="12" font-weight="700" fill="#5b21b6">dist/server.mjs — Flue agent server</text>
+      <text x="192" y="366" text-anchor="middle" font-size="10.5" fill="#6d28d9">HTTP /agents/&lt;name&gt;/:id · SSE event stream</text>
+      <path d="M110 274 L130 330" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M280 274 L260 330" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+
+      <!-- host zone content -->
+      <rect x="420" y="90" width="150" height="44" rx="9" fill="#fff" stroke="#7dd3fc"/>
+      <text x="495" y="109" text-anchor="middle" font-size="12" font-weight="600" class="mono">runner.ts</text>
+      <text x="495" y="124" text-anchor="middle" font-size="10.5" fill="#5b6577">build · spawn · readiness</text>
+
+      <rect x="590" y="90" width="150" height="44" rx="9" fill="#fff" stroke="#7dd3fc"/>
+      <text x="665" y="109" text-anchor="middle" font-size="12" font-weight="600" class="mono">agent-io.ts</text>
+      <text x="665" y="124" text-anchor="middle" font-size="10.5" fill="#5b6577">SSE → AgentChunk</text>
+
+      <rect x="420" y="190" width="150" height="44" rx="9" fill="#fff" stroke="#fcd34d"/>
+      <text x="495" y="209" text-anchor="middle" font-size="12" font-weight="600">console/ (Ink TUI)</text>
+      <text x="495" y="224" text-anchor="middle" font-size="10.5" fill="#5b6577">picker · chat · markdown</text>
+
+      <rect x="590" y="190" width="150" height="44" rx="9" fill="#fff" stroke="#6ee7b7"/>
+      <text x="665" y="209" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/server.ts</text>
+      <text x="665" y="224" text-anchor="middle" font-size="10.5" fill="#5b6577">Bun.serve · port 3790</text>
+
+      <rect x="420" y="290" width="150" height="44" rx="9" fill="#fff" stroke="#94a3b8"/>
+      <text x="495" y="309" text-anchor="middle" font-size="12" font-weight="600" class="mono">main.ts</text>
+      <text x="495" y="324" text-anchor="middle" font-size="10.5" fill="#5b6577">console entry</text>
+
+      <rect x="590" y="290" width="150" height="44" rx="9" fill="#fff" stroke="#94a3b8"/>
+      <text x="665" y="309" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/main.ts</text>
+      <text x="665" y="324" text-anchor="middle" font-size="10.5" fill="#5b6577">web entry</text>
+
+      <path d="M495 290 L495 234" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M665 290 L665 234" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M510 190 L630 134" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <path d="M665 190 L665 134" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+
+      <!-- cross-zone arrows -->
+      <path d="M420 112 C 390 112, 380 200, 352 330" stroke="#0284c7" stroke-width="1.8" marker-end="url(#arrB)" fill="none" stroke-dasharray="6 4"/>
+      <text x="362" y="210" font-size="10.5" fill="#0369a1" transform="rotate(68 362 210)">spawns + polls /openapi.json</text>
+      <path d="M615 134 C 560 250, 460 330, 352 352" stroke="#0284c7" stroke-width="1.8" marker-end="url(#arrB)" fill="none"/>
+      <text x="470" y="268" font-size="10.5" fill="#0369a1" transform="rotate(28 470 268)">HTTP · SSE invoke</text>
+
+      <!-- browser zone content -->
+      <rect x="815" y="90" width="290" height="120" rx="9" fill="#fff" stroke="#6ee7b7"/>
+      <text x="960" y="113" text-anchor="middle" font-size="12.5" font-weight="700">web/client/ — React SPA</text>
+      <text x="960" y="133" text-anchor="middle" font-size="10.5" fill="#5b6577">HomeScreen · ChatLessonScreen · IdeLessonScreen</text>
+      <text x="960" y="150" text-anchor="middle" font-size="10.5" fill="#5b6577">useAgentChat · CodeMirror · MDXEditor</text>
+      <text x="960" y="170" text-anchor="middle" font-size="10.5" fill="#dc2626">⚠ IdeLessonScreen.tsx: 315 lines, 10 useState</text>
+      <text x="960" y="188" text-anchor="middle" font-size="10.5" fill="#dc2626">⚠ own copies of ReplyChunk / AgentInfo types</text>
+
+      <path d="M815 150 C 790 150, 770 212, 740 212" stroke="#059669" stroke-width="1.8" marker-end="url(#arr)" fill="none"/>
+      <text x="752" y="178" font-size="10.5" fill="#047857">fetch + SSE</text>
+
+      <!-- filesystem seam -->
+      <rect x="10" y="470" width="1120" height="74" rx="14" fill="#fffbeb" stroke="#fde68a"/>
+      <text x="28" y="496" font-size="13" font-weight="700" fill="#92400e">FILESYSTEM SEAM — /tmp/&lt;agent&gt;/scratch</text>
+      <text x="28" y="516" font-size="11.5" fill="#92400e">Agent tools (tools.ts, inside the Flue subprocess) write lesson files + a hidden <tspan class="mono">.open-request</tspan> signal file.</text>
+      <text x="28" y="532" font-size="11.5" fill="#92400e">The web server (web/files.ts) reads the same dirs with a <tspan font-weight="700">second, duplicated implementation</tspan> of path-guarding and dotfile filtering.</text>
+      <path d="M192 378 L192 470" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr)" fill="none" stroke-dasharray="4 3"/>
+      <path d="M700 234 C 700 320, 700 400, 700 470" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr)" fill="none" stroke-dasharray="4 3"/>
+    </svg>
+    <div class="legend">
+      <span><i style="background:#8b5cf6"></i>Flue build (never importable from host)</span>
+      <span><i style="background:#0284c7"></i>Host process</span>
+      <span><i style="background:#059669"></i>Browser bundle</span>
+      <span><i style="background:#d97706"></i>Filesystem contract</span>
+    </div>
+  </div>
+  <p class="lede" style="margin-top:18px">
+    Key rule the refactor must preserve: <b>profiles import <code>SKILL.md</code> via
+    <code>with&nbsp;{ type: "skill" }</code></b>, so they only resolve inside Flue's build — host code must
+    never import them. And anything shared with the browser must be free of <code>node:*</code> and
+    <code>process.env</code>. That constrains where a "shared" layer can live and what it may contain:
+    <b>pure data and calculations only</b> — which happens to be exactly what the project's own style guide asks for.
+  </p>
+</section>
+
+<!-- ================================================================ DEP GRAPH -->
+<section id="depgraph-s">
+  <div class="kicker">2 · Module dependency graph</div>
+  <h2>Who imports whom — and the edge that shouldn't exist</h2>
+  <p class="lede">
+    Hover any module to isolate its imports and importers. The <b style="color:var(--sev-high)">red dashed edge</b>
+    is the layering violation: the web server imports UI types from the console frontend. The
+    <b style="color:#b45309">amber edge</b> is its enabler — the agent registry (host data) also reaches into console types.
+  </p>
+  <div class="panel">
+    <svg id="depgraph" viewBox="0 0 1160 560" role="img" aria-label="Module dependency graph">
+      <defs>
+        <marker id="ga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/>
+        </marker>
+        <marker id="gaR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/>
+        </marker>
+        <marker id="gaA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#d97706"/>
+        </marker>
+      </defs>
+
+      <!-- flue zone backdrop -->
+      <rect x="120" y="425" width="580" height="100" rx="12" fill="#f5f3ff" stroke="#ddd6fe"/>
+      <text x="136" y="447" font-size="11" font-weight="700" fill="#7c3aed">BUNDLED BY FLUE BUILD</text>
+
+      <!-- ======== edges (drawn first, under nodes) ======== -->
+      <g class="edge" data-from="main" data-to="cindex"><path d="M185 66 L120 130" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="main" data-to="runner"><path d="M245 66 L420 132" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="main" data-to="agentio"><path d="M280 56 C 420 70, 480 90, 565 128" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="main" data-to="registry"><path d="M222 66 C 240 130, 300 170, 350 228" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="webmain" data-to="runner"><path d="M680 66 L470 130" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="webmain" data-to="server"><path d="M730 66 L742 128" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="cindex" data-to="capp"><path d="M170 148 L188 148" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="cindex" data-to="ctypes"><path d="M115 166 L165 228" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="capp" data-to="ctypes"><path d="M240 166 L195 228" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="capp" data-to="agentio"><path d="M320 140 C 400 96, 450 96, 518 138" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge warn" data-from="registry" data-to="ctypes"><path d="M298 248 L248 248" stroke="#d97706" stroke-width="1.8" fill="none" marker-end="url(#gaA)"/></g>
+      <g class="edge" data-from="server" data-to="agentio"><path d="M678 142 L652 142" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="server" data-to="history"><path d="M745 166 L745 228" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="server" data-to="files"><path d="M790 166 L865 228" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="server" data-to="registry"><path d="M690 166 C 580 200, 500 215, 435 240" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="server" data-to="workspaces"><path d="M730 166 C 680 240, 600 290, 545 330" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge bad" data-from="server" data-to="ctypes"><path d="M700 164 C 540 230, 380 230, 250 242" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 4" fill="none" marker-end="url(#gaR)"/></g>
+      <g class="edge" data-from="files" data-to="openreq"><path d="M880 284 L702 344" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="tools" data-to="openreq"><path d="M432 348 L598 348" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="profiles" data-to="tools"><path d="M385 450 L372 368" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="profiles" data-to="workspaces"><path d="M440 450 L505 368" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="profiles" data-to="skills"><path d="M462 470 L508 470" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="agents" data-to="profiles"><path d="M282 470 L328 470" stroke="#94a3b8" stroke-width="1.4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="client" data-to="server"><path d="M898 142 L815 144" stroke="#059669" stroke-width="1.6" stroke-dasharray="4 3" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="agentio" data-to="agents"><path d="M600 166 C 660 260, 640 380, 580 442" stroke="#0284c7" stroke-width="1.6" stroke-dasharray="6 4" fill="none" marker-end="url(#ga)"/></g>
+      <g class="edge" data-from="runner" data-to="agents"><path d="M428 166 C 360 250, 330 350, 380 425" stroke="#0284c7" stroke-width="1.6" stroke-dasharray="6 4" fill="none" marker-end="url(#ga)"/></g>
+
+      <!-- ======== nodes ======== -->
+      <!-- entries -->
+      <g class="node" data-id="main"><rect x="150" y="30" width="130" height="36" rx="9" fill="#fff" stroke="#475569" stroke-width="1.6"/><text x="215" y="52" text-anchor="middle" font-size="12" font-weight="600" class="mono">main.ts</text></g>
+      <g class="node" data-id="webmain"><rect x="660" y="30" width="130" height="36" rx="9" fill="#fff" stroke="#475569" stroke-width="1.6"/><text x="725" y="52" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/main.ts</text></g>
+      <!-- frontends + transport -->
+      <g class="node" data-id="cindex"><rect x="40" y="130" width="130" height="36" rx="9" fill="#fff" stroke="#d97706" stroke-width="1.6"/><text x="105" y="152" text-anchor="middle" font-size="12" font-weight="600" class="mono">console/index</text></g>
+      <g class="node" data-id="capp"><rect x="190" y="130" width="130" height="36" rx="9" fill="#fff" stroke="#d97706" stroke-width="1.6"/><text x="255" y="152" text-anchor="middle" font-size="12" font-weight="600" class="mono">console/App</text></g>
+      <g class="node" data-id="runner"><rect x="370" y="130" width="130" height="36" rx="9" fill="#fff" stroke="#0284c7" stroke-width="1.6"/><text x="435" y="152" text-anchor="middle" font-size="12" font-weight="600" class="mono">runner.ts</text></g>
+      <g class="node" data-id="agentio"><rect x="520" y="130" width="130" height="36" rx="9" fill="#fff" stroke="#0284c7" stroke-width="1.6"/><text x="585" y="152" text-anchor="middle" font-size="12" font-weight="600" class="mono">agent-io.ts</text></g>
+      <g class="node" data-id="server"><rect x="680" y="130" width="130" height="36" rx="9" fill="#fff" stroke="#059669" stroke-width="1.6"/><text x="745" y="152" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/server.ts</text></g>
+      <g class="node" data-id="client"><rect x="900" y="112" width="160" height="54" rx="9" fill="#fff" stroke="#059669" stroke-width="1.6"/><text x="980" y="134" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/client/*</text><text x="980" y="152" text-anchor="middle" font-size="10.5" fill="#5b6577">React SPA (browser)</text></g>
+      <!-- mid -->
+      <g class="node" data-id="ctypes"><rect x="115" y="230" width="130" height="36" rx="9" fill="#fffbeb" stroke="#d97706" stroke-width="1.6"/><text x="180" y="252" text-anchor="middle" font-size="12" font-weight="600" class="mono">console/types</text></g>
+      <g class="node" data-id="registry"><rect x="300" y="230" width="135" height="36" rx="9" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/><text x="368" y="252" text-anchor="middle" font-size="12" font-weight="600" class="mono">…/registry.ts</text></g>
+      <g class="node" data-id="history"><rect x="680" y="230" width="130" height="36" rx="9" fill="#fff" stroke="#059669" stroke-width="1.6"/><text x="745" y="252" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/history.ts</text></g>
+      <g class="node" data-id="files"><rect x="830" y="230" width="130" height="36" rx="9" fill="#fff" stroke="#059669" stroke-width="1.6"/><text x="895" y="252" text-anchor="middle" font-size="12" font-weight="600" class="mono">web/files.ts</text></g>
+      <!-- shared config -->
+      <g class="node" data-id="tools"><rect x="300" y="330" width="130" height="36" rx="9" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/><text x="365" y="352" text-anchor="middle" font-size="12" font-weight="600" class="mono">tools.ts</text></g>
+      <g class="node" data-id="workspaces"><rect x="450" y="330" width="130" height="36" rx="9" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/><text x="515" y="352" text-anchor="middle" font-size="12" font-weight="600" class="mono">workspaces.ts</text></g>
+      <g class="node" data-id="openreq"><rect x="600" y="330" width="130" height="36" rx="9" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/><text x="665" y="352" text-anchor="middle" font-size="12" font-weight="600" class="mono">open-request.ts</text></g>
+      <!-- flue -->
+      <g class="node" data-id="agents"><rect x="150" y="452" width="130" height="36" rx="9" fill="#fff" stroke="#8b5cf6" stroke-width="1.6"/><text x="215" y="474" text-anchor="middle" font-size="12" font-weight="600" class="mono">agents/*.ts</text></g>
+      <g class="node" data-id="profiles"><rect x="330" y="452" width="130" height="36" rx="9" fill="#fff" stroke="#8b5cf6" stroke-width="1.6"/><text x="395" y="474" text-anchor="middle" font-size="12" font-weight="600" class="mono">profiles/*.ts</text></g>
+      <g class="node" data-id="skills"><rect x="510" y="452" width="130" height="36" rx="9" fill="#fff" stroke="#8b5cf6" stroke-width="1.6"/><text x="575" y="474" text-anchor="middle" font-size="12" font-weight="600" class="mono">skills/*</text></g>
+
+      <!-- annotations -->
+      <text x="470" y="218" font-size="11" font-weight="700" fill="#dc2626">web/server.ts:3 imports console UI types ✕</text>
+      <text x="256" y="290" font-size="10.5" fill="#b45309">registry.ts:1 → AgentChoice</text>
+      <text x="845" y="105" font-size="10.5" fill="#047857">HTTP/SSE only →</text>
+    </svg>
+    <div class="hint">↖ Hover a module to highlight its direct dependencies and dependents. Dashed blue edges are runtime (spawn / HTTP), not imports.</div>
+    <div class="legend">
+      <span><i style="background:#475569"></i>entry</span>
+      <span><i style="background:#d97706"></i>console TUI</span>
+      <span><i style="background:#0284c7"></i>transport</span>
+      <span><i style="background:#059669"></i>web</span>
+      <span><i style="background:#4f46e5"></i>shared config / identity (the future <code>src/shared/</code>)</span>
+      <span><i style="background:#8b5cf6"></i>flue-build only</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ JOURNEY -->
+<section id="journey">
+  <div class="kicker">3 · The cost of change today</div>
+  <h2>Adding one agent touches 6 files — with zero compile-time checks</h2>
+  <p class="lede">
+    Agent identity is a <b>string repeated across the codebase</b>, and nothing verifies the copies agree.
+    Three of these files are demanded by Flue and will always exist (green). The other three are
+    accidental duplication (numbered red) — each one a silent failure if forgotten.
+  </p>
+  <div class="journey">
+    <div class="jcard keep">
+      <div class="n">1</div>
+      <h4><code>src/agents/&lt;id&gt;.ts</code></h4>
+      <p>The Flue agent stub — 16 lines, 94% identical to its siblings. Filename <em>is</em> the agent id.</p>
+      <div class="forget"><b>Required by Flue.</b> One agent per top-level file is load-bearing — keep it.</div>
+    </div>
+    <div class="jcard keep">
+      <div class="n">2</div>
+      <h4><code>src/agents/profiles/&lt;id&gt;.ts</code></h4>
+      <p>Instructions + SKILL.md import + tools. Only resolves inside <code>flue build</code>.</p>
+      <div class="forget"><b>Required by Flue.</b> Stays.</div>
+    </div>
+    <div class="jcard keep">
+      <div class="n">3</div>
+      <h4><code>src/skills/&lt;id&gt;/SKILL.md</code></h4>
+      <p>The tutor's actual pedagogy. Where behavior changes belong.</p>
+      <div class="forget"><b>Required by Flue.</b> Stays.</div>
+    </div>
+    <div class="jcard">
+      <div class="n">4</div>
+      <h4><code>profiles/registry.ts:15-58</code></h4>
+      <p>Hardcoded <code>AGENT_CHOICES</code>: id, label, greeting, actions.</p>
+      <div class="forget"><b>Forget it:</b> agent is invisible in both the console menu and the web home screen. No error.</div>
+    </div>
+    <div class="jcard">
+      <div class="n">5</div>
+      <h4><code>workspaces.ts:19-22</code></h4>
+      <p>A <em>second</em> map keyed by the same id strings → scratch dir.</p>
+      <div class="forget"><b>Forget it:</b> file APIs 404, lesson tools break, IDE screen stays empty. Silent at build time.</div>
+    </div>
+    <div class="jcard">
+      <div class="n">6</div>
+      <h4><code>web/client/data/agents.ts:22-61</code></h4>
+      <p>A <em>third</em> id-keyed map: editor kind, icon, and a hardcoded 7-step course outline.</p>
+      <div class="forget"><b>Forget it:</b> web client has no UI config for the agent — undefined lookups at runtime.</div>
+    </div>
+  </div>
+  <p class="lede" style="margin-top:20px">
+    <b>After the refactor:</b> steps 4–6 collapse into <b>one entry</b> in <code>src/shared/catalog.ts</code>,
+    where a <code>Record&lt;AgentId, AgentDefinition&gt;</code> makes the compiler refuse to build until the entry
+    exists — and a filesystem-consistency unit test fails <code>bun test</code> with a named error if the
+    stub, profile, or skill directory is missing or orphaned.
+  </p>
+</section>
+
+<!-- ================================================================ TYPES -->
+<section id="types">
+  <div class="kicker">4 · Type duplication</div>
+  <h2>One concept, three definitions, zero shared source</h2>
+  <p class="lede">
+    The streaming chunk — the single most important type in the system — is defined three times,
+    structurally identical. The console even has a <b>no-op converter</b>
+    (<code>console/App.tsx:13-15</code>) translating the type to itself. Agent metadata has the same
+    disease: <code>AgentChoice</code> vs <code>AgentInfo</code>, <code>ConsoleAction</code> vs <code>AgentAction</code>.
+  </p>
+  <div class="panel">
+    <svg viewBox="0 0 1140 360" role="img" aria-label="Type duplication map">
+      <defs>
+        <marker id="ta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#4f46e5"/>
+        </marker>
+      </defs>
+      <!-- three duplicate boxes -->
+      <g>
+        <rect x="20" y="20" width="330" height="120" rx="12" fill="#fff" stroke="#0284c7" stroke-width="1.6"/>
+        <text x="40" y="48" font-size="12.5" font-weight="700" class="mono" fill="#0369a1">src/agent-io.ts:4-8</text>
+        <text x="40" y="74" font-size="12" class="mono">type AgentChunk =</text>
+        <text x="52" y="94" font-size="12" class="mono">| {kind:"text";  text:string}</text>
+        <text x="52" y="114" font-size="12" class="mono">| {kind:"debug"; text:string}</text>
+      </g>
+      <g>
+        <rect x="405" y="20" width="330" height="120" rx="12" fill="#fff" stroke="#d97706" stroke-width="1.6"/>
+        <text x="425" y="48" font-size="12.5" font-weight="700" class="mono" fill="#92400e">src/console/types.ts:10</text>
+        <text x="425" y="74" font-size="12" class="mono">type ReplyChunk =</text>
+        <text x="437" y="94" font-size="12" class="mono">| {kind:"text";  text:string}</text>
+        <text x="437" y="114" font-size="12" class="mono">| {kind:"debug"; text:string}</text>
+      </g>
+      <g>
+        <rect x="790" y="20" width="330" height="120" rx="12" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+        <text x="810" y="48" font-size="12.5" font-weight="700" class="mono" fill="#047857">src/web/client/types.ts:18</text>
+        <text x="810" y="74" font-size="12" class="mono">type ReplyChunk =</text>
+        <text x="822" y="94" font-size="12" class="mono">| {kind:"text";  text:string}</text>
+        <text x="822" y="114" font-size="12" class="mono">| {kind:"debug"; text:string}</text>
+      </g>
+      <text x="185" y="166" text-anchor="middle" font-size="11.5" fill="#dc2626">⚠ identical</text>
+      <text x="570" y="166" text-anchor="middle" font-size="11.5" fill="#dc2626">⚠ identical — plus a no-op converter, App.tsx:13</text>
+      <text x="955" y="166" text-anchor="middle" font-size="11.5" fill="#dc2626">⚠ identical — re-typed by hand for the browser</text>
+
+      <!-- converging arrows -->
+      <path d="M185 175 C 185 240, 380 255, 500 268" stroke="#4f46e5" stroke-width="2" fill="none" marker-end="url(#ta)"/>
+      <path d="M570 175 L570 262" stroke="#4f46e5" stroke-width="2" fill="none" marker-end="url(#ta)"/>
+      <path d="M955 175 C 955 240, 760 255, 640 268" stroke="#4f46e5" stroke-width="2" fill="none" marker-end="url(#ta)"/>
+
+      <!-- target -->
+      <rect x="370" y="270" width="400" height="72" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+      <text x="570" y="298" text-anchor="middle" font-size="13.5" font-weight="700" fill="#3730a3" class="mono">src/shared/chunks.ts</text>
+      <text x="570" y="320" text-anchor="middle" font-size="11.5" fill="#4338ca">AgentChunk · StreamFrame (∪ done/error) · parseStreamFrame()</text>
+    </svg>
+  </div>
+
+  <div class="two" style="margin-top:18px">
+    <div class="panel">
+      <h3 style="margin-top:0">The layering violation it causes</h3>
+      <p style="font-size:14px; color:var(--ink-soft)">
+        Because the canonical <code>AgentChoice</code> lives in <code>src/console/types.ts</code>,
+        both the registry (<code>registry.ts:1</code>) and the <b>web server</b>
+        (<code>web/server.ts:3</code>) import from the console frontend. A change to console UI types
+        can break the web API surface. The fix is mechanical once <code>shared/catalog.ts</code> exists:
+        console and web both alias the shared <code>AgentPresentation</code>.
+      </p>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Parallel metadata types</h3>
+      <pre><code>console/types.ts        web/client/types.ts
+─────────────────       ───────────────────
+AgentChoice       ≡     AgentInfo
+ConsoleAction     ≡     AgentAction
+Message (5 roles)  ~    ChatMessage
+
+→ shared/catalog.ts: AgentAction,
+  AgentPresentation (one wire shape)</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ STREAMING -->
+<section id="streaming">
+  <div class="kicker">5 · Streaming pipeline</div>
+  <h2>Browser → web server → agent-io → Flue, with four soft spots</h2>
+  <p class="lede">
+    The happy path works well — SSE end to end, with a keepalive heartbeat. The soft spots are all at the
+    edges: an unguarded parser, no way to cancel, and a stream that ends without <code>done</code> being
+    indistinguishable from a complete reply.
+  </p>
+  <div class="panel">
+    <svg viewBox="0 0 1140 470" role="img" aria-label="Streaming sequence diagram">
+      <defs>
+        <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+        </marker>
+      </defs>
+      <!-- lifeline heads -->
+      <g font-size="12.5" font-weight="700">
+        <rect x="60" y="16" width="170" height="40" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/><text x="145" y="36" text-anchor="middle">Browser</text><text x="145" y="50" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577" class="mono">api.ts · useAgentChat</text>
+        <rect x="350" y="16" width="170" height="40" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/><text x="435" y="36" text-anchor="middle">Web server</text><text x="435" y="50" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577" class="mono">server.ts sseReply</text>
+        <rect x="640" y="16" width="170" height="40" rx="9" fill="#f0f9ff" stroke="#7dd3fc"/><text x="725" y="36" text-anchor="middle">agent-io</text><text x="725" y="50" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577" class="mono">createAgentSession</text>
+        <rect x="930" y="16" width="170" height="40" rx="9" fill="#f5f3ff" stroke="#c4b5fd"/><text x="1015" y="36" text-anchor="middle">Flue server</text><text x="1015" y="50" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577" class="mono">dist/server.mjs</text>
+      </g>
+      <!-- lifelines -->
+      <g stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="145" y1="56" x2="145" y2="440"/>
+        <line x1="435" y1="56" x2="435" y2="440"/>
+        <line x1="725" y1="56" x2="725" y2="440"/>
+        <line x1="1015" y1="56" x2="1015" y2="440"/>
+      </g>
+      <!-- messages -->
+      <g font-size="11.5" class="mono">
+        <line x1="145" y1="92" x2="430" y2="92" stroke="#334155" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="160" y="84">POST /api/sessions/:id/messages {message}</text>
+
+        <line x1="435" y1="132" x2="720" y2="132" stroke="#334155" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="450" y="124">session.send(payload)</text>
+
+        <line x1="725" y1="172" x2="1010" y2="172" stroke="#334155" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="740" y="164">POST /agents/&lt;id&gt;/:instance (SSE)</text>
+
+        <line x1="1010" y1="212" x2="730" y2="212" stroke="#8b5cf6" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="745" y="204" fill="#6d28d9">text_delta · tool events (stream)</text>
+
+        <line x1="720" y1="252" x2="440" y2="252" stroke="#0284c7" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="455" y="244" fill="#0369a1">AgentChunk {kind:"text"|"debug"}</text>
+
+        <line x1="430" y1="292" x2="150" y2="292" stroke="#059669" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="162" y="284" fill="#047857">data: {"kind":"text",…}\n\n</text>
+
+        <line x1="430" y1="332" x2="150" y2="332" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#sa)"/>
+        <text x="162" y="324" fill="#64748b">: keepalive (every 15s)</text>
+
+        <line x1="430" y1="372" x2="150" y2="372" stroke="#059669" stroke-width="1.6" marker-end="url(#sa)"/>
+        <text x="162" y="364" fill="#047857">data: {"kind":"done"}</text>
+      </g>
+      <!-- callouts -->
+      <g font-size="11">
+        <circle cx="120" cy="292" r="11" fill="#dc2626"/><text x="120" y="296" text-anchor="middle" fill="#fff" font-weight="700">1</text>
+        <circle cx="120" cy="92" r="11" fill="#dc2626"/><text x="120" y="96" text-anchor="middle" fill="#fff" font-weight="700">2</text>
+        <circle cx="120" cy="372" r="11" fill="#dc2626"/><text x="120" y="376" text-anchor="middle" fill="#fff" font-weight="700">3</text>
+        <circle cx="460" cy="412" r="11" fill="#dc2626"/><text x="460" y="416" text-anchor="middle" fill="#fff" font-weight="700">4</text>
+        <text x="480" y="416" font-size="11.5" fill="#991b1b">sessions/histories Maps grow forever — server.ts:90-96, no eviction</text>
+      </g>
+    </svg>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-top:14px; font-size:13px;">
+      <div><b style="color:var(--sev-high)">① Unguarded parse.</b> <code>api.ts:75</code> calls <code>JSON.parse</code> on each SSE frame with no guard — one malformed frame crashes the stream handler. Fix: <code>parseStreamFrame()</code> returns <code>null</code> for garbage.</div>
+      <div><b style="color:var(--sev-high)">② No cancellation.</b> No <code>AbortController</code> anywhere — navigating away or resetting chat leaves the fetch streaming in the background (<code>useAgentChat.ts</code>).</div>
+      <div><b style="color:var(--sev-high)">③ Implicit done.</b> If the connection drops before the <code>done</code> frame, the client renders a truncated reply as if complete. Fix: reader-ends-without-done → throw.</div>
+      <div><b style="color:var(--sev-med)">④ Unbounded maps.</b> Acceptable for localhost, but a 6-line size cap documents the intent.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ SAVE/SYNC -->
+<section id="savesync">
+  <div class="kicker">6 · The IdeLessonScreen save machine</div>
+  <h2>Two real bugs hiding in an implicit state machine</h2>
+  <p class="lede">
+    <code>IdeLessonScreen.tsx</code> (315 lines) interleaves autosave, file switching, tutor-driven file
+    sync, open-request polling, chat, and toasts — with the save lifecycle spread across
+    <code>useState</code>, three refs, and a debounced effect. Drawn as the state machine it implicitly is,
+    the two bugs become visible.
+  </p>
+  <div class="panel">
+    <svg viewBox="0 0 1140 430" role="img" aria-label="Autosave state machine">
+      <defs>
+        <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
+        </marker>
+        <marker id="maR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/>
+        </marker>
+      </defs>
+      <!-- states -->
+      <g font-size="13" font-weight="700">
+        <rect x="50" y="60" width="120" height="46" rx="23" fill="#fff" stroke="#475569" stroke-width="1.8"/><text x="110" y="88" text-anchor="middle">idle</text>
+        <rect x="290" y="60" width="120" height="46" rx="23" fill="#fffbeb" stroke="#d97706" stroke-width="1.8"/><text x="350" y="88" text-anchor="middle">unsaved</text>
+        <rect x="530" y="60" width="120" height="46" rx="23" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8"/><text x="590" y="88" text-anchor="middle">saving</text>
+        <rect x="770" y="60" width="120" height="46" rx="23" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/><text x="830" y="88" text-anchor="middle">saved</text>
+        <rect x="530" y="200" width="120" height="46" rx="23" fill="#fef2f2" stroke="#dc2626" stroke-width="2.2"/><text x="590" y="228" text-anchor="middle" fill="#991b1b">error</text>
+      </g>
+      <!-- transitions -->
+      <g font-size="11.5">
+        <path d="M170 83 L286 83" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#ma)"/>
+        <text x="228" y="74" text-anchor="middle">edit</text>
+        <path d="M410 83 L526 83" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#ma)"/>
+        <text x="468" y="74" text-anchor="middle">1s quiet (debounce)</text>
+        <path d="M650 83 L766 83" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#ma)"/>
+        <text x="708" y="74" text-anchor="middle">write ok</text>
+        <path d="M560 106 C 480 150, 420 130, 380 108" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#ma)"/>
+        <text x="470" y="148" text-anchor="middle">write ok, but edited meanwhile</text>
+        <path d="M590 106 L590 196" stroke="#dc2626" stroke-width="2" fill="none" marker-end="url(#maR)"/>
+        <text x="600" y="155" fill="#991b1b" font-weight="700">write fails</text>
+        <path d="M830 106 C 830 180, 500 200, 372 110" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 3" fill="none" marker-end="url(#ma)"/>
+        <text x="700" y="196" fill="#64748b">edit again</text>
+      </g>
+      <!-- bug B -->
+      <g>
+        <rect x="690" y="190" width="420" height="78" rx="10" fill="#fef2f2" stroke="#fecaca"/>
+        <text x="706" y="214" font-size="12.5" font-weight="700" fill="#991b1b">BUG B — dead-end error state</text>
+        <text x="706" y="234" font-size="11.5" fill="#7f1d1d">IdeLessonScreen.tsx:174-176 sets saveState:"error" and stops.</text>
+        <text x="706" y="250" font-size="11.5" fill="#7f1d1d">Effect deps [code, active] won't re-fire — no retry until the</text>
+        <text x="706" y="266" font-size="11.5" fill="#7f1d1d">student happens to type again.</text>
+        <path d="M690 226 L656 226" stroke="#dc2626" stroke-width="1.6" fill="none" marker-end="url(#maR)"/>
+      </g>
+      <!-- bug A -->
+      <g>
+        <rect x="50" y="300" width="1060" height="100" rx="12" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.6"/>
+        <text x="70" y="328" font-size="13" font-weight="700" fill="#991b1b">BUG A — silent data loss in flushPendingSave() · IdeLessonScreen.tsx:88-94</text>
+        <text x="70" y="352" font-size="12" fill="#7f1d1d" class="mono">await writeLessonFile(…).catch(() => {});   // ① write fails, error swallowed</text>
+        <text x="70" y="372" font-size="12" fill="#7f1d1d" class="mono">savedRef.current = codeRef.current;          // ② unsaved work marked "saved" anyway</text>
+        <text x="70" y="392" font-size="12" fill="#7f1d1d">…then the file switch proceeds and openFile() overwrites the editor — the student's edits are gone, no toast, no error.</text>
+      </g>
+    </svg>
+    <p style="font-size:14px; color:var(--ink-soft); margin:16px 0 0">
+      <b>The fix is structural, not a patch:</b> extract the lifecycle into a pure reducer
+      (<code>lib/autosave.ts</code> — <code>nextSaveState(state, event)</code>, trivially unit-testable),
+      wrap it in a thin <code>useAutosave</code> hook whose <code>flush()</code> returns <code>false</code>
+      on failure (callers decide whether to proceed), and re-arm the timer once on error. The file-sync
+      decision tree (open-request wins → first file → newer-and-clean → tutor-rewrote-current,
+      lines 96-144) gets the same treatment: a pure <code>planSync()</code> calculation with tests pinning
+      today's behavior, then a <code>useLessonFileSync</code> hook. The screen drops to ~120 lines of layout.
+    </p>
+  </div>
+</section>
+
+<!-- ================================================================ GAPS -->
+<section id="gaps">
+  <div class="kicker">7 · Gap inventory</div>
+  <h2>Every finding, with its fix phase</h2>
+  <div class="filters" id="sevfilter">
+    <button class="on" data-sev="all">All (18)</button>
+    <button data-sev="high">High (3)</button>
+    <button data-sev="med">Medium (9)</button>
+    <button data-sev="low">Low (6)</button>
+  </div>
+  <div class="gaps" id="gapgrid" data-f="all">
+
+    <div class="gap sev-high">
+      <h4>Agent identity scattered across 6+ files <span class="chip high">HIGH</span><span class="chip phase">Phase 1</span></h4>
+      <p>Same id strings in registry, workspaces, client data, filenames, skill dirs, server validation. No compile-time check; drift = silent 404s.</p>
+      <div class="ref"><code>registry.ts:15-58</code> · <code>workspaces.ts:19-22</code> · <code>data/agents.ts:22-61</code> · <code>web/server.ts:129</code></div>
+    </div>
+    <div class="gap sev-high">
+      <h4>Chunk type ×3 + layering violation <span class="chip high">HIGH</span><span class="chip phase">Phase 1</span></h4>
+      <p>Identical stream type defined three times; web server imports console UI types; no-op converter papers over the seam.</p>
+      <div class="ref"><code>agent-io.ts:4-8</code> · <code>console/types.ts:10</code> · <code>web/client/types.ts:18</code> · <code>web/server.ts:3</code> · <code>console/App.tsx:13-15</code></div>
+    </div>
+    <div class="gap sev-high">
+      <h4>flushPendingSave silent data loss <span class="chip high">HIGH</span><span class="chip phase">Phase 4</span></h4>
+      <p>Failed write swallowed, then content unconditionally marked saved; the following file switch discards the student's work.</p>
+      <div class="ref"><code>IdeLessonScreen.tsx:88-94</code></div>
+    </div>
+
+    <div class="gap sev-med">
+      <h4>IdeLessonScreen god component <span class="chip med">MED</span><span class="chip phase">Phase 4</span></h4>
+      <p>315 lines, 10 useState + 3 refs, six concerns interleaved. Untestable without a browser.</p>
+      <div class="ref"><code>IdeLessonScreen.tsx:51-315</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>Autosave error state dead-ends <span class="chip med">MED</span><span class="chip phase">Phase 4</span></h4>
+      <p>On write failure, <code>saveState:"error"</code> with no retry — effect deps never re-fire until the next keystroke.</p>
+      <div class="ref"><code>IdeLessonScreen.tsx:174-176</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>Lesson-file access implemented twice <span class="chip med">MED</span><span class="chip phase">Phase 2</span></h4>
+      <p>Path-traversal guard and dotfile filter duplicated between agent tools and web store over the same scratch dirs.</p>
+      <div class="ref"><code>tools.ts:16-18,54</code> vs <code>web/files.ts:26,32</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>SSE client: unguarded parse, no abort, implicit done <span class="chip med">MED</span><span class="chip phase">Phase 3</span></h4>
+      <p>Malformed frame throws uncaught; in-flight streams can't be cancelled; dropped connection looks like a finished reply.</p>
+      <div class="ref"><code>api.ts:65-84</code> · <code>useAgentChat.ts:118,145-150</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>Unvalidated JSON request bodies <span class="chip med">MED</span><span class="chip phase">Phase 3</span></h4>
+      <p>Type assertions after <code>.catch(() =&gt; null)</code>; body shape never checked beyond field existence.</p>
+      <div class="ref"><code>web/server.ts:124-127</code> · <code>web/files.ts:46</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>sessions/histories never evicted <span class="chip med">MED</span><span class="chip phase">Phase 3</span></h4>
+      <p>Per-lifetime Maps with no cap, TTL, or timestamps. Fine for one learner on localhost; should be a documented decision, not an accident.</p>
+      <div class="ref"><code>web/server.ts:90-96</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>shell:true $EDITOR spawn <span class="chip med">MED</span><span class="chip phase">Phase 2</span></h4>
+      <p>Editor command string is shell-executed; env-controlled. Path is JSON-quoted but the command itself isn't constrained.</p>
+      <div class="ref"><code>tools.ts:135-142</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>Console App.tsx mixes transport with rendering <span class="chip med">MED</span><span class="chip phase">Phase 3</span></h4>
+      <p>Streaming loop, text accumulation, command dispatch, and FIFO queue all inside the component; debugMode needs a state+ref sync hack.</p>
+      <div class="ref"><code>console/App.tsx:44-46,52-85,107</code></div>
+    </div>
+    <div class="gap sev-med">
+      <h4>Duplicated screen scaffolding <span class="chip med">MED</span><span class="chip phase">Phase 4</span></h4>
+      <p>ChatLessonScreen and IdeLessonScreen each hand-roll AppBar + OptionsMenu + reset confirm (~80 lines repeated).</p>
+      <div class="ref"><code>ChatLessonScreen.tsx:1-77</code> vs <code>IdeLessonScreen.tsx</code></div>
+    </div>
+
+    <div class="gap sev-low">
+      <h4>Three error styles across one domain <span class="chip low">LOW</span><span class="chip phase">Phase 2</span></h4>
+      <p>Sentinel strings (model contract), <code>null</code> (host), HTTP 404 (wire). Keep all three but as documented layer translations in one module.</p>
+      <div class="ref"><code>tools.ts</code> · <code>web/files.ts</code> · <code>web/server.ts</code></div>
+    </div>
+    <div class="gap sev-low">
+      <h4>Silent <code>.catch(() =&gt; …)</code> swallowing <span class="chip low">LOW</span><span class="chip phase">Phase 2/4</span></h4>
+      <p>readdir/read/write failures become empty lists or no-ops — permission and disk errors are invisible.</p>
+      <div class="ref"><code>tools.ts:52</code> · <code>web/files.ts:30,55</code> · <code>HomeScreen.tsx:84</code></div>
+    </div>
+    <div class="gap sev-low">
+      <h4>Hardcoded gamification + course outlines <span class="chip low">LOW</span><span class="chip phase">Phase 1 (partial)</span></h4>
+      <p>XP/streak/hearts are static placeholders (fine, label them); course outlines move to the catalog so they live beside the agent.</p>
+      <div class="ref"><code>gamification.ts:6-23</code> · <code>data/agents.ts:22-61</code></div>
+    </div>
+    <div class="gap sev-low">
+      <h4>/tmp scratch defaults, env-mutation ordering <span class="chip low">LOW</span><span class="chip phase">note</span></h4>
+      <p>Not cross-platform; <code>TUTOR_OPEN_MODE</code> mutated at startup before spawn — works, but the ordering is implicit.</p>
+      <div class="ref"><code>workspaces.ts:12-16</code> · <code>web/main.ts:21</code></div>
+    </div>
+    <div class="gap sev-low">
+      <h4>Untested surface <span class="chip low">LOW</span><span class="chip phase">Phase 5</span></h4>
+      <p>runner.ts, InputBar, Transcript, Menu, and the entire web client have no tests. The refactor's pure calculations make most of this cheap.</p>
+      <div class="ref"><code>src/runner.ts</code> · <code>src/console/*</code> · <code>src/web/client/*</code></div>
+    </div>
+    <div class="gap sev-low">
+      <h4>E2E brittleness <span class="chip low">LOW</span><span class="chip phase">Phase 5</span></h4>
+      <p>Hard 15s readiness deadlines; web e2e tests share one CONVERSATION_ID so order matters; SSE test parser assumes no newlines in frames.</p>
+      <div class="ref"><code>tutor.e2e.test.ts:57</code> · <code>web.e2e.test.ts:106,127</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ TARGET -->
+<section id="target">
+  <div class="kicker">8 · Target architecture</div>
+  <h2>One new layer fixes the two structural problems</h2>
+  <p class="lede">
+    A <b>layer 0</b>: <code>src/shared/</code> — browser-safe, Flue-build-safe, dependency-free pure data and
+    calculations. Everything above imports it; nothing in it imports anything. Toggle to compare.
+  </p>
+
+  <div class="toggle" id="batoggle">
+    <button class="on" data-pane="before">Before (today)</button>
+    <button data-pane="after">After (proposed)</button>
+  </div>
+
+  <div class="pane on" data-pane="before">
+    <div class="panel">
+      <svg viewBox="0 0 1140 330" role="img" aria-label="Current type/identity topology">
+        <defs>
+          <marker id="ba" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/>
+          </marker>
+          <marker id="baR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/>
+          </marker>
+        </defs>
+        <g font-size="12.5" font-weight="600">
+          <rect x="60" y="40" width="200" height="50" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1.8"/>
+          <text x="160" y="62" text-anchor="middle" class="mono">console/types.ts</text>
+          <text x="160" y="80" text-anchor="middle" font-size="10.5" font-weight="400" fill="#92400e">accidental "shared" type hub</text>
+
+          <rect x="380" y="40" width="180" height="50" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+          <text x="470" y="70" text-anchor="middle" class="mono">web/server.ts</text>
+
+          <rect x="640" y="40" width="180" height="50" rx="10" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/>
+          <text x="730" y="70" text-anchor="middle" class="mono">registry.ts</text>
+
+          <rect x="900" y="40" width="190" height="50" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+          <text x="995" y="62" text-anchor="middle" class="mono">web/client/types.ts</text>
+          <text x="995" y="80" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577">hand-copied twins</text>
+
+          <rect x="380" y="200" width="180" height="50" rx="10" fill="#fff" stroke="#4f46e5" stroke-width="1.6"/>
+          <text x="470" y="222" text-anchor="middle" class="mono">workspaces.ts</text>
+          <text x="470" y="240" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577">2nd id-keyed map</text>
+
+          <rect x="640" y="200" width="180" height="50" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+          <text x="730" y="222" text-anchor="middle" class="mono">data/agents.ts</text>
+          <text x="730" y="240" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577">3rd id-keyed map</text>
+        </g>
+        <path d="M380 65 L264 65" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 4" fill="none" marker-end="url(#baR)"/>
+        <text x="280" y="54" font-size="11" fill="#991b1b" font-weight="700">imports console UI types ✕</text>
+        <path d="M640 72 C 500 110, 380 100, 266 80" stroke="#d97706" stroke-width="1.8" fill="none" marker-end="url(#ba)"/>
+        <text x="430" y="118" font-size="11" fill="#b45309">AgentChoice</text>
+        <path d="M995 90 C 995 160, 700 170, 270 95" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4 3" fill="none" marker-end="url(#ba)"/>
+        <text x="620" y="158" font-size="11" fill="#64748b">no import — shapes copied by hand, drift undetected</text>
+        <path d="M470 200 C 470 150, 620 120, 700 92" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4 3" fill="none" marker-end="url(#ba)"/>
+        <text x="500" y="150" font-size="11" fill="#64748b">same id strings, no link</text>
+        <path d="M730 200 L730 94" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4 3" fill="none" marker-end="url(#ba)"/>
+        <text x="742" y="150" font-size="11" fill="#64748b">same id strings, no link</text>
+        <text x="60" y="305" font-size="12.5" fill="#5b6577">Identity lives in 3 unlinked maps + 2 type families. Compiler can't see any of it.</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="pane" data-pane="after">
+    <div class="panel">
+      <svg viewBox="0 0 1140 330" role="img" aria-label="Proposed shared layer topology">
+        <defs>
+          <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#4f46e5"/>
+          </marker>
+        </defs>
+        <g font-size="12.5" font-weight="600">
+          <rect x="40" y="30" width="170" height="50" rx="10" fill="#fff" stroke="#d97706" stroke-width="1.6"/>
+          <text x="125" y="60" text-anchor="middle" class="mono">console/*</text>
+          <rect x="250" y="30" width="170" height="50" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+          <text x="335" y="60" text-anchor="middle" class="mono">web/server.ts</text>
+          <rect x="460" y="30" width="170" height="50" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+          <text x="545" y="60" text-anchor="middle" class="mono">web/client/*</text>
+          <rect x="670" y="30" width="170" height="50" rx="10" fill="#fff" stroke="#8b5cf6" stroke-width="1.6"/>
+          <text x="755" y="60" text-anchor="middle" class="mono">profiles/*</text>
+          <rect x="880" y="30" width="190" height="50" rx="10" fill="#fff" stroke="#0284c7" stroke-width="1.6"/>
+          <text x="975" y="60" text-anchor="middle" class="mono">agent-io.ts</text>
+        </g>
+        <!-- shared layer -->
+        <rect x="120" y="180" width="880" height="110" rx="14" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+        <text x="560" y="208" text-anchor="middle" font-size="14" font-weight="700" fill="#3730a3" class="mono">src/shared/ — layer 0 · pure data + calculations · zero imports</text>
+        <g font-size="12" class="mono">
+          <rect x="160" y="222" width="250" height="50" rx="9" fill="#fff" stroke="#a5b4fc"/>
+          <text x="285" y="243" text-anchor="middle" font-weight="600">catalog.ts</text>
+          <text x="285" y="260" text-anchor="middle" font-size="10.5" fill="#5b6577">AgentId · AGENTS · isAgentId()</text>
+          <rect x="440" y="222" width="250" height="50" rx="9" fill="#fff" stroke="#a5b4fc"/>
+          <text x="565" y="243" text-anchor="middle" font-weight="600">chunks.ts</text>
+          <text x="565" y="260" text-anchor="middle" font-size="10.5" fill="#5b6577">AgentChunk · StreamFrame · parse</text>
+          <rect x="720" y="222" width="250" height="50" rx="9" fill="#fff" stroke="#a5b4fc"/>
+          <text x="845" y="243" text-anchor="middle" font-weight="600">lesson-names.ts</text>
+          <text x="845" y="260" text-anchor="middle" font-size="10.5" fill="#5b6577">sort · progress · isHiddenFile</text>
+        </g>
+        <!-- arrows down -->
+        <g stroke="#4f46e5" stroke-width="1.8" fill="none">
+          <path d="M125 80 L240 180" marker-end="url(#aa)"/>
+          <path d="M335 80 L400 180" marker-end="url(#aa)"/>
+          <path d="M545 80 L555 180" marker-end="url(#aa)"/>
+          <path d="M755 80 L700 180" marker-end="url(#aa)"/>
+          <path d="M975 80 L860 180" marker-end="url(#aa)"/>
+        </g>
+        <text x="120" y="315" font-size="12.5" fill="#5b6577">Safe everywhere: no node:*, no process.env → bundles into the browser AND into flue build. Env resolution stays in workspaces.ts (host).</text>
+      </svg>
+    </div>
+  </div>
+
+  <h3>The catalog: one entry per agent, compiler-enforced</h3>
+  <div class="two">
+    <pre><code>// src/shared/catalog.ts — data + calculations only
+export type AgentId =
+  | "acd-tutor"
+  | "argumentative-essay-tutor"
+  | "socratic-tutor";
+
+export interface AgentDefinition {
+  id: AgentId;
+  label: string;
+  description: string;
+  greeting: string;
+  farewell?: string;
+  actions: AgentAction[];
+  /** Present iff the agent manages lesson files. */
+  workspace?: {
+    dirEnvVar: string;     // "ACD_TUTOR_SCRATCH_DIR"
+    defaultDir: string;    // "/tmp/acd-tutor/scratch"
+    editor: "code" | "markdown";
+  };
+  /** Dashboard stepper; absent = no course card. */
+  course?: CourseOutline;
+}
+
+export const AGENTS = {
+  "acd-tutor": { /* … */ },
+  // forget an entry → compile error
+} satisfies Record&lt;AgentId, AgentDefinition&gt;;
+
+export function isAgentId(v: string): v is AgentId;
+export function toPresentation(d: AgentDefinition):
+  AgentPresentation;   // the wire/menu subset</code></pre>
+    <div>
+      <pre><code>// src/shared/chunks.ts
+export type AgentChunk =
+  | { kind: "text";  text: string }
+  | { kind: "debug"; text: string };
+
+export type StreamFrame =
+  | AgentChunk
+  | { kind: "done" }
+  | { kind: "error"; text: string };
+
+/** null for malformed frames — skip, don't crash. */
+export function parseStreamFrame(raw: string):
+  StreamFrame | null;</code></pre>
+      <p style="font-size:13.5px; color:var(--ink-soft)">
+        <b>What derives from the catalog:</b> <code>AGENT_CHOICES</code> becomes
+        <code>AGENT_LIST.map(toPresentation)</code>; <code>WORKSPACES</code> becomes a host-side
+        <code>workspaceDir(id)</code> resolving env over <code>defaultDir</code>; the web client's
+        <code>data/agents.ts</code> shrinks to a cosmetic <code>Record&lt;AgentId, {icon, iconBg}&gt;</code> —
+        still compile-checked. The unavoidable Flue trio (stub, profile, skill) is guarded by a
+        <b>filesystem-consistency test</b>: <code>readdir</code> both directories and assert every
+        <code>AgentId</code> has its stub, profile, and skill — and no orphans exist.
+      </p>
+      <p style="font-size:13.5px; color:var(--ink-soft)">
+        <b>One subtlety kept on purpose:</b> console and web server continue to receive their agent list
+        <em>by injection</em> (from <code>main.ts</code> / <code>web/main.ts</code>) rather than importing the
+        catalog — the e2e suite injects a <code>tutor-faux</code> agent that isn't in the catalog.
+      </p>
+    </div>
+  </div>
+
+  <h3>Lesson files: two implementations become one</h3>
+  <div class="panel">
+    <svg viewBox="0 0 1140 230" role="img" aria-label="Lesson file unification">
+      <defs>
+        <marker id="la" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
+        </marker>
+      </defs>
+      <g font-size="12.5" font-weight="600">
+        <rect x="40" y="30" width="240" height="56" rx="10" fill="#fff" stroke="#8b5cf6" stroke-width="1.6"/>
+        <text x="160" y="54" text-anchor="middle" class="mono">tools.ts</text>
+        <text x="160" y="74" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577">thin adapter → model sentinels</text>
+        <rect x="40" y="130" width="240" height="56" rx="10" fill="#fff" stroke="#059669" stroke-width="1.6"/>
+        <text x="160" y="154" text-anchor="middle" class="mono">web/server.ts</text>
+        <text x="160" y="174" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5b6577">null → HTTP 404 at the wire</text>
+
+        <rect x="420" y="75" width="320" height="70" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+        <text x="580" y="103" text-anchor="middle" class="mono" fill="#3730a3">src/lesson-files.ts</text>
+        <text x="580" y="124" text-anchor="middle" font-size="10.5" font-weight="400" fill="#4338ca">resolveLessonPath (calc) · LessonFileStore (actions)</text>
+
+        <rect x="830" y="75" width="270" height="70" rx="12" fill="#fffbeb" stroke="#fde68a"/>
+        <text x="965" y="103" text-anchor="middle" font-size="12">/tmp/&lt;agent&gt;/scratch</text>
+        <text x="965" y="124" text-anchor="middle" font-size="10.5" font-weight="400" fill="#92400e">+ .open-request signal file</text>
+      </g>
+      <path d="M280 70 C 340 80, 370 90, 416 100" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#la)"/>
+      <path d="M280 145 C 340 135, 370 125, 416 118" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#la)"/>
+      <path d="M740 110 L826 110" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#la)"/>
+      <text x="40" y="215" font-size="12.5" fill="#5b6577">web/files.ts is deleted. Sentinels (NO_FILES / FILE_NOT_FOUND) stay — they're part of the model's prompt contract. The shell:true $EDITOR spawn becomes an args-array spawn here too.</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ================================================================ ROADMAP -->
+<section id="roadmap">
+  <div class="kicker">9 · Roadmap</div>
+  <h2>Four phases, each independently shippable</h2>
+  <p class="lede">Each phase ends green: <code>bunx tsc --noEmit</code> + <code>bun test</code>, plus <code>bun run test:e2e</code> whenever the agent or streaming path is touched (per AGENTS.md). Foundation first — everything else builds on the shared layer.</p>
+
+  <div class="roadmap">
+    <div class="phase">
+      <h4>Phase 1 — Shared foundation <span class="chip phase">fixes #1 #2</span></h4>
+      <div class="files">
+        <span class="fchip new">+ shared/catalog.ts</span>
+        <span class="fchip new">+ shared/chunks.ts</span>
+        <span class="fchip new">+ shared/lesson-names.ts</span>
+        <span class="fchip mod">workspaces.ts</span>
+        <span class="fchip mod">registry.ts → derived</span>
+        <span class="fchip mod">console/types.ts</span>
+        <span class="fchip mod">console/App.tsx</span>
+        <span class="fchip mod">web/server.ts</span>
+        <span class="fchip mod">web/client/types.ts</span>
+        <span class="fchip mod">data/agents.ts → cosmetic</span>
+        <span class="fchip mod">AGENTS.md</span>
+      </div>
+      <p class="meta"><b>Tests:</b> catalog test incl. the filesystem-consistency check (AgentId ↔ stub/profile/skill, no orphans); parseStreamFrame (valid / garbage / wrong-shape → null); moved lesson-name tests. <b>Risk:</b> shared/ must stay free of node:* and process.env or the browser bundle and flue build fail in different ways — both compilers are the guard. Keep agent lists injected (e2e faux agent isn't in the catalog).</p>
+    </div>
+
+    <div class="phase">
+      <h4>Phase 2 — One lesson-file module <span class="chip phase">fixes #6 #10 #13 #14</span></h4>
+      <div class="files">
+        <span class="fchip new">+ lesson-files.ts</span>
+        <span class="fchip mod">tools.ts → sentinel adapter</span>
+        <span class="fchip mod">web/server.ts</span>
+        <span class="fchip del">web/files.ts</span>
+      </div>
+      <p class="meta"><b>Tests:</b> new lesson-files suite (traversal: <code>../x</code>, <code>/etc/x</code>; dotfiles; open-request round-trip incl. malformed JSON); tools.test.ts slims to sentinel mapping + spawn arg shape. Re-run e2e. <b>Risk:</b> the $EDITOR spawn change (naive split, args-array) — verify manually with <code>EDITOR="zed -w"</code>. Tool descriptions/sentinels must not change: the model prompt depends on them.</p>
+    </div>
+
+    <div class="phase">
+      <h4>Phase 3 — Streaming hardening <span class="chip phase">fixes #7 #8 #9 #11</span></h4>
+      <div class="files">
+        <span class="fchip mod">web/server.ts (StreamFrame · readJsonBody · session cap)</span>
+        <span class="fchip mod">web/client/api.ts (guarded parse · AbortSignal · explicit done)</span>
+        <span class="fchip mod">useAgentChat.ts (AbortController)</span>
+        <span class="fchip new">+ console/useChatStream.ts (pure foldChunk)</span>
+        <span class="fchip mod">console/App.tsx</span>
+      </div>
+      <p class="meta"><b>Tests:</b> mocked-fetch stream tests (happy path / malformed frame skipped / missing done throws / abort); foldChunk unit tests; server body-validation tests via <code>startWebServer</code> on port 0. <b>Risk:</b> missing-done now surfaces as an error — confirm useAgentChat shows the error bubble, not a truncated reply. Heartbeat comments must still be filtered by the <code>data:&nbsp;</code> prefix check.</p>
+    </div>
+
+    <div class="phase">
+      <h4>Phase 4 — Web client decomposition <span class="chip phase">fixes #3 #4 #5 #12</span></h4>
+      <div class="files">
+        <span class="fchip new">+ client/lib/autosave.ts (reducer)</span>
+        <span class="fchip new">+ client/hooks/useAutosave.ts</span>
+        <span class="fchip new">+ client/hooks/useLessonFileSync.ts (pure planSync)</span>
+        <span class="fchip new">+ client/components/LessonScreenShell.tsx</span>
+        <span class="fchip mod">IdeLessonScreen.tsx → ~120 lines</span>
+        <span class="fchip mod">ChatLessonScreen.tsx</span>
+      </div>
+      <p class="meta"><b>Tests:</b> autosave reducer (edit→unsaved; save-ok-with-concurrent-edit→unsaved; save-fail→error+retry); planSync decision table pinning today's behavior <em>before</em> touching the hook. <b>Fixes both save bugs</b> via flush() returning false on failure. <b>Risk:</b> the sync decision tree is subtle — extract pure, pin with tests, then rewire. Manual browser pass through both tutors.</p>
+    </div>
+
+    <div class="phase opt">
+      <h4>Phase 5 (optional) — Test debt</h4>
+      <div class="files">
+        <span class="fchip new">+ console InputBar/Transcript/Menu tests</span>
+        <span class="fchip mod">e2e: per-test session ids, adaptive readiness polling</span>
+      </div>
+      <p class="meta">Pure test work, no production code. Do it when it starts hurting, not before.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ DONTS -->
+<section id="donts">
+  <div class="kicker">10 · Anti-goals</div>
+  <h2>What we deliberately won't do</h2>
+  <p class="lede">For a ~580-LOC backend, the failure mode isn't under-engineering — it's the opposite. These were considered and rejected.</p>
+  <div class="donts">
+    <div class="dont"><h4>Codegen for agent stubs</h4><p>Flue's one-agent-per-file discovery is load-bearing. The filesystem-consistency <em>test</em> is the right-sized guard, not a generator.</p></div>
+    <div class="dont"><h4>Validation library (zod etc.)</h4><p>Three request bodies. A 10-line <code>readJsonBody(req, guard)</code> helper suffices. Bun-only / no-new-deps holds.</p></div>
+    <div class="dont"><h4>Real session eviction (LRU, TTLs)</h4><p>Localhost, one learner. A size cap plus a comment documenting the decision is proportionate.</p></div>
+    <div class="dont"><h4>Unifying console and web UIs</h4><p>They share <em>types and transport</em>, not rendering. A "ChatEngine" abstraction over both send loops would couple things that differ legitimately (queueing, debug display).</p></div>
+    <div class="dont"><h4>Serving UI config over /api/agents</h4><p>The client is bundled from the same repo — importing the catalog is simpler than versioning a wire schema for icons.</p></div>
+    <div class="dont"><h4>Building gamification</h4><p>XP/streak/hearts stay labeled placeholders. Phase 1 deletes the dead course-steps copy in <code>gamification.ts</code>; the rest waits for a real product decision.</p></div>
+    <div class="dont"><h4>Monorepo / publishing shared/ as a package</h4><p>A directory with import discipline — enforced by the browser bundle and flue build both compiling it — is enough at this size.</p></div>
+    <div class="dont"><h4>Generalizing LessonFileStore</h4><p>Two consumers. No pluggable backends, no event emitters. Two call sites don't justify an abstraction.</p></div>
+  </div>
+</section>
+
+<footer>
+  acd-tutor architecture review · generated 2026-06-11 · single-file, no external dependencies ·
+  source references verified against the working tree at generation time
+</footer>
+
+</main>
+
+<script>
+  // --- dependency graph hover highlighting -------------------------------
+  (function () {
+    const svg = document.getElementById("depgraph");
+    if (!svg) return;
+    const edges = Array.from(svg.querySelectorAll(".edge"));
+    const nodes = Array.from(svg.querySelectorAll(".node"));
+    nodes.forEach((n) => {
+      n.addEventListener("mouseenter", () => {
+        const id = n.dataset.id;
+        const connected = new Set([id]);
+        edges.forEach((e) => {
+          if (e.dataset.from === id || e.dataset.to === id) {
+            e.classList.add("lit");
+            connected.add(e.dataset.from);
+            connected.add(e.dataset.to);
+          }
+        });
+        nodes.forEach((m) => { if (connected.has(m.dataset.id)) m.classList.add("lit"); });
+        svg.classList.add("focus");
+      });
+      n.addEventListener("mouseleave", () => {
+        svg.classList.remove("focus");
+        svg.querySelectorAll(".lit").forEach((x) => x.classList.remove("lit"));
+      });
+    });
+  })();
+
+  // --- severity filter ----------------------------------------------------
+  (function () {
+    const bar = document.getElementById("sevfilter");
+    const grid = document.getElementById("gapgrid");
+    if (!bar || !grid) return;
+    bar.querySelectorAll("button").forEach((b) => {
+      b.addEventListener("click", () => {
+        bar.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+        b.classList.add("on");
+        grid.dataset.f = b.dataset.sev;
+      });
+    });
+  })();
+
+  // --- before/after toggle --------------------------------------------------
+  (function () {
+    const t = document.getElementById("batoggle");
+    if (!t) return;
+    const panes = document.querySelectorAll(".pane");
+    t.querySelectorAll("button").forEach((b) => {
+      b.addEventListener("click", () => {
+        t.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+        b.classList.add("on");
+        panes.forEach((p) => p.classList.toggle("on", p.dataset.pane === b.dataset.pane));
+      });
+    });
+  })();
+
+  // --- scrollspy nav ----------------------------------------------------------
+  (function () {
+    const links = Array.from(document.querySelectorAll("nav a"));
+    const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            links.forEach((a) => a.classList.remove("on"));
+            const link = map.get(e.target.id);
+            if (link) link.classList.add("on");
+          }
+        });
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+    document.querySelectorAll("section[id]").forEach((s) => obs.observe(s));
+  })();
+</script>
+</body>
+</html>

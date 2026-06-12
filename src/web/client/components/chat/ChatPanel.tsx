@@ -28,6 +28,13 @@ function Message({
       </div>
     );
   }
+  if (message.role === "debug") {
+    return (
+      <div className="msg debug max-w-[92%] self-start font-mono text-[12px] whitespace-pre-wrap text-muted animate-[fadeup_.25s_ease_both]">
+        {message.text}
+      </div>
+    );
+  }
   const isTutor = message.role === "tutor";
   return (
     <div

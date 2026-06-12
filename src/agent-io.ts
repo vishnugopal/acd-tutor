@@ -1,11 +1,7 @@
 import type { DirectAgentPayload, FlueClient, FlueEvent } from "@flue/sdk";
+import type { AgentChunk } from "./shared/chunks";
 
-/** One streamed chunk of an agent reply. */
-export type AgentChunk =
-  /** Reply prose, streamed as deltas. */
-  | { kind: "text"; text: string }
-  /** One formatted diagnostic line (tool calls, turns, logs, …). */
-  | { kind: "debug"; text: string };
+export type { AgentChunk };
 
 export interface AgentSession {
   /** Conversation id — memory lives server-side on this for the session's lifetime. */

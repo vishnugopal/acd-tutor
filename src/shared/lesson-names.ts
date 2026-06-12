@@ -1,4 +1,13 @@
-/** Pure helpers for ordering lesson files (lesson-1.ts … lesson-7.ts). */
+/**
+ * Pure calculations over lesson filenames (lesson-1.ts … lesson-7.ts),
+ * shared by the browser (tabs, dashboard progress) and the host (lesson-file
+ * listing). Layer 0: no I/O — callers pass the names in.
+ */
+
+/** Dotfiles are host bookkeeping (e.g. the open-request signal), not lessons. */
+export function isHiddenFile(name: string): boolean {
+  return name.startsWith(".");
+}
 
 export function lessonNumber(name: string): number | null {
   const match = name.match(/(\d+)/);

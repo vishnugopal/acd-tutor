@@ -3,9 +3,9 @@ import { listLessonFiles } from "../api";
 import { AppBar } from "../components/AppBar";
 import { CodeBuddyLogo } from "../components/CodeBuddyLogo";
 import { Mascot } from "../components/Mascot";
-import { AGENT_UI, DEFAULT_AGENT_UI, type CourseConfig } from "../data/agents";
+import { agentCourse, agentIcon, type CourseOutline } from "../data/agents";
 import { STATIC_GAME } from "../data/gamification";
-import { courseProgress } from "../lib/lessonFiles";
+import { courseProgress } from "../../../shared/lesson-names";
 import type { AgentInfo } from "../types";
 
 const CARD =
@@ -25,7 +25,7 @@ function CourseStepper({
   course,
   files,
 }: {
-  course: CourseConfig;
+  course: CourseOutline;
   files: string[];
 }) {
   const { current, done } = courseProgress(files);
@@ -76,7 +76,7 @@ export function HomeScreen({
 
   useEffect(() => {
     for (const agent of agents) {
-      if (!AGENT_UI[agent.id]?.course) continue;
+      if (!agentCourse(agent.id)) continue;
       void listLessonFiles(agent.id)
         .then((files) =>
           setWorkspaces((prev) => ({ ...prev, [agent.id]: files })),
@@ -86,7 +86,7 @@ export function HomeScreen({
   }, [agents]);
 
   const startedCourses = agents.filter(
-    (a) => AGENT_UI[a.id]?.course && (workspaces[a.id]?.length ?? 0) > 0,
+    (a) => agentCourse(a.id) && (workspaces[a.id]?.length ?? 0) > 0,
   );
   const anyStarted = startedCourses.length > 0;
 
@@ -114,7 +114,7 @@ export function HomeScreen({
         </div>
 
         {agents.map((agent) => {
-          const course = AGENT_UI[agent.id]?.course;
+          const course = agentCourse(agent.id);
           if (!course) return null;
           return (
             <CourseStepper
@@ -127,8 +127,8 @@ export function HomeScreen({
 
         <div className="cards grid grid-cols-1 gap-[14px] min-[720px]:grid-cols-2">
           {agents.map((agent) => {
-            const ui = AGENT_UI[agent.id] ?? DEFAULT_AGENT_UI;
-            const course = ui.course;
+            const ui = agentIcon(agent.id);
+            const course = agentCourse(agent.id);
             const files = workspaces[agent.id] ?? [];
             const started = course !== undefined && files.length > 0;
             const { current } = courseProgress(files);

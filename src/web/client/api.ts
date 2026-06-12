@@ -1,3 +1,4 @@
+import { parseStreamFrame } from "../../shared/chunks";
 import type { AgentInfo, ReplyChunk } from "./types";
 
 /**
@@ -45,16 +46,20 @@ export async function fetchHistory(
 /**
  * Sends one message and yields the tutor's reply chunks as they stream in
  * (SSE over fetch). Terminates on the server's `done` event; a server-side
- * `error` event becomes a thrown Error.
+ * `error` event becomes a thrown Error, and so does a connection that drops
+ * before `done` — a truncated reply must never look complete. Malformed
+ * frames are skipped. Abort via `signal` to cancel the in-flight reply.
  */
 export async function* streamReply(
   sessionId: string,
   message: string,
+  signal?: AbortSignal,
 ): AsyncGenerator<ReplyChunk> {
   const res = await fetch(`/api/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message }),
+    signal,
   });
   if (!res.ok || !res.body) throw new Error(`Send failed (${res.status})`);
 
@@ -72,16 +77,15 @@ export async function* streamReply(
     for (const event of events) {
       for (const line of event.split("\n")) {
         if (!line.startsWith("data: ")) continue;
-        const payload = JSON.parse(line.slice(6)) as
-          | ReplyChunk
-          | { kind: "done" }
-          | { kind: "error"; text: string };
-        if (payload.kind === "done") return;
-        if (payload.kind === "error") throw new Error(payload.text);
-        yield payload;
+        const frame = parseStreamFrame(line.slice(6));
+        if (frame === null) continue; // malformed frame: skip, don't crash
+        if (frame.kind === "done") return;
+        if (frame.kind === "error") throw new Error(frame.text);
+        yield frame;
       }
     }
   }
+  throw new Error("Connection dropped before the reply finished");
 }
 
 /* Lesson-file APIs are per-agent: each tutor has its own workspace

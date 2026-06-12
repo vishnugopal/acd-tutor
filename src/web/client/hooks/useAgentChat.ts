@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  finishStream,
+  foldChunk,
+  initialStreamState,
+} from "../../../shared/stream-fold";
 import { createSession, fetchHistory, streamReply } from "../api";
 import {
   clearConversationId,
@@ -9,9 +14,10 @@ import type { ChatMessage } from "../types";
 
 /**
  * Live agent conversation over the web API — the browser counterpart of the
- * console runner's send loop (src/console/App.tsx): text chunks accumulate
- * into a streaming bubble, debug chunks are dropped (logged to devtools), and
- * the reply lands in the transcript when the stream ends.
+ * console runner's send loop (src/console/App.tsx): chunks fold through the
+ * shared stream-fold calculations, so debug lines render in the transcript
+ * when debug mode is on (the options-menu counterpart of the console's
+ * /debug) and fold away otherwise.
  *
  * The conversation id is persisted in localStorage so a reload resumes the
  * same Flue conversation; the transcript itself is restored from the server
@@ -42,6 +48,10 @@ export interface AgentChat {
   send: (text: string, display?: string) => void;
   /** Drops the stored conversation and starts over from the greeting. */
   reset: () => void;
+  /** When on, agent diagnostics render in the transcript as debug lines. */
+  debugMode: boolean;
+  /** Safe to call mid-stream — applies to the reply in flight. */
+  toggleDebug: () => void;
 }
 
 let nextId = 1;
@@ -63,8 +73,17 @@ export function useAgentChat({
 
   const [messages, setMessages] = useState<ChatMessage[]>(greetingMessages);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const debugModeRef = useRef(debugMode);
+  debugModeRef.current = debugMode;
+  const toggleDebug = useCallback(() => setDebugMode((v) => !v), []);
   const busyRef = useRef(false);
   const sessionRef = useRef<Promise<string> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cancel the in-flight reply when the screen unmounts (e.g. back to home) —
+  // otherwise the fetch keeps streaming in the background.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Keep the latest callback without re-creating `send`.
   const onReplyDoneRef = useRef(onReplyDone);
@@ -114,26 +133,48 @@ export function useAgentChat({
 
       append(msg("user", display ?? trimmed));
       setStreamingText("");
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       void (async () => {
         try {
           const sessionId = await ensureSession();
 
-          let reply = "";
-          for await (const chunk of streamReply(sessionId, trimmed)) {
-            if (chunk.kind === "text") {
-              reply += chunk.text;
-              setStreamingText(reply);
-            } else {
-              console.debug("[tutor]", chunk.text);
+          let state = initialStreamState;
+          for await (const chunk of streamReply(
+            sessionId,
+            trimmed,
+            controller.signal,
+          )) {
+            if (chunk.kind === "debug") console.debug("[tutor]", chunk.text);
+            const folded = foldChunk(state, chunk, debugModeRef.current);
+            state = folded.state;
+            if (folded.append.length > 0) {
+              setMessages((prev) => [
+                ...prev,
+                ...folded.append.map((m) => msg(m.role, m.text)),
+              ]);
             }
+            setStreamingText(state.text);
           }
-          append(msg("tutor", reply.trim() || EMPTY_REPLY_MESSAGE));
+          // Trimmed so whitespace-only prose still yields the empty-reply
+          // message, as before the fold.
+          for (const m of finishStream(
+            { ...state, text: state.text.trim() },
+            EMPTY_REPLY_MESSAGE,
+          )) {
+            append(msg(m.role, m.text));
+          }
           onReplyDoneRef.current?.();
         } catch (err) {
-          console.error("[tutor] reply failed", err);
-          append(msg("info", ERROR_MESSAGE));
+          // A deliberate cancel (unmount) isn't an error to render. A dropped
+          // connection is: the error bubble, never a truncated reply.
+          if (!controller.signal.aborted) {
+            console.error("[tutor] reply failed", err);
+            append(msg("info", ERROR_MESSAGE));
+          }
         } finally {
+          if (abortRef.current === controller) abortRef.current = null;
           busyRef.current = false;
           setStreamingText(null);
         }
@@ -155,5 +196,7 @@ export function useAgentChat({
     isBusy: streamingText !== null,
     send,
     reset,
+    debugMode,
+    toggleDebug,
   };
 }
