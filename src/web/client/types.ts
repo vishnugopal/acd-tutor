@@ -1,26 +1,15 @@
-/** Action button surfaced by an agent (e.g. "Check my work"). */
-export interface AgentAction {
-  label: string;
-  message: string;
-}
+import type { AgentAction, AgentPresentation } from "../../shared/catalog";
+import type { AgentChunk } from "../../shared/chunks";
 
-/** Agent metadata served by GET /api/agents (mirrors AgentChoice). */
-export interface AgentInfo {
-  id: string;
-  label: string;
-  description?: string;
-  greeting?: string;
-  farewell?: string;
-  actions?: AgentAction[];
-}
+export type { AgentAction };
 
-/** One streamed chunk of a tutor reply (mirrors AgentChunk on the server). */
-export interface ReplyChunk {
-  kind: "text" | "debug";
-  text: string;
-}
+/** Agent metadata served by GET /api/agents (the shared wire shape). */
+export type AgentInfo = AgentPresentation;
 
-export type ChatRole = "user" | "tutor" | "info";
+/** One streamed chunk of a tutor reply (the shared chunk vocabulary). */
+export type ReplyChunk = AgentChunk;
+
+export type ChatRole = "user" | "tutor" | "info" | "debug";
 
 export interface ChatMessage {
   id: number;

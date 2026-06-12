@@ -1,7 +1,8 @@
 import type { FlueClient } from "@flue/sdk";
 import { createAgentSession, type AgentChunk, type AgentSession } from "../agent-io";
-import type { AgentChoice } from "../console/types";
-import { createLessonFileStore, type LessonFileStore } from "./files";
+import type { AgentPresentation } from "../shared/catalog";
+import type { StreamFrame } from "../shared/chunks";
+import { createLessonFileStore, type LessonFileStore } from "../lesson-files";
 import { appendTurn, type TranscriptMessage } from "./history";
 import indexPage from "./client/index.html";
 
@@ -17,7 +18,7 @@ import indexPage from "./client/index.html";
 
 export interface WebServerOptions {
   client: FlueClient;
-  agents: AgentChoice[];
+  agents: AgentPresentation[];
   /** Lesson-file workspace per agent id (agents without one are chat-only). */
   workspaces?: Record<string, string>;
   port?: number;
@@ -38,8 +39,8 @@ function sseReply(chunks: AsyncIterable<AgentChunk>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const emit = (payload: unknown) =>
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      const emit = (frame: StreamFrame) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(frame)}\n\n`));
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": keepalive\n\n"));
@@ -72,6 +73,46 @@ const badRequest = (message: string) =>
 const notFound = (message: string) =>
   Response.json({ error: message }, { status: 404 });
 
+/** Reads a JSON request body and validates its shape; null = reject with 400. */
+async function readJsonBody<T>(
+  req: Request,
+  guard: (value: unknown) => value is T,
+): Promise<T | null> {
+  const body = (await req.json().catch(() => null)) as unknown;
+  return guard(body) ? body : null;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isSessionBody = (
+  value: unknown,
+): value is { agent: string; instanceId?: string } =>
+  isRecord(value) &&
+  typeof value.agent === "string" &&
+  (value.instanceId === undefined || typeof value.instanceId === "string");
+
+const isMessageBody = (value: unknown): value is { message: string } =>
+  isRecord(value) && typeof value.message === "string";
+
+const isContentBody = (value: unknown): value is { content: string } =>
+  isRecord(value) && typeof value.content === "string";
+
+/**
+ * Localhost, single learner: real eviction (LRU/TTL) is deliberately out of
+ * scope — this cap just keeps per-lifetime growth bounded instead of
+ * accidental. Insertion order makes the first key the oldest.
+ */
+const MAX_SESSIONS = 100;
+
+function evictOldest(map: Map<string, unknown>, max: number): void {
+  while (map.size > max) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) return;
+    map.delete(oldest);
+  }
+}
+
 export function startWebServer(options: WebServerOptions): WebServer {
   const { client, agents, port = 3790 } = options;
 
@@ -103,6 +144,7 @@ export function startWebServer(options: WebServerOptions): WebServer {
             instanceId,
             appendTurn(histories.get(instanceId) ?? [], event.messages),
           );
+          evictOldest(histories, MAX_SESSIONS);
         }
       },
     });
@@ -121,24 +163,23 @@ export function startWebServer(options: WebServerOptions): WebServer {
 
       "/api/sessions": {
         POST: async (req) => {
-          const body = (await req.json().catch(() => null)) as {
-            agent?: string;
-            instanceId?: string;
-          } | null;
-          const agentId = body?.agent;
-          if (!agentId || !agents.some((a) => a.id === agentId)) {
+          const body = await readJsonBody(req, isSessionBody);
+          if (!body) return badRequest("Invalid request body");
+          const agentId = body.agent;
+          if (!agents.some((a) => a.id === agentId)) {
             return badRequest("Unknown agent");
           }
           // The client may resume a prior conversation by sending back the
           // instance id it stored (localStorage) — Flue's conversation memory
           // is keyed by it server-side. Sessions are keyed by it here too.
-          const requested = body?.instanceId;
+          const requested = body.instanceId;
           if (requested !== undefined && !/^[\w-]{1,128}$/.test(requested)) {
             return badRequest("Invalid instanceId");
           }
           const instanceId = requested ?? `${agentId}_${crypto.randomUUID()}`;
           if (!sessions.has(instanceId)) {
             sessions.set(instanceId, openSession(agentId, instanceId));
+            evictOldest(sessions, MAX_SESSIONS);
           }
           return Response.json({ sessionId: instanceId, instanceId });
         },
@@ -154,10 +195,9 @@ export function startWebServer(options: WebServerOptions): WebServer {
         POST: async (req) => {
           const session = sessions.get(req.params.id);
           if (!session) return notFound("Unknown session");
-          const body = (await req.json().catch(() => null)) as {
-            message?: string;
-          } | null;
-          const message = body?.message?.trim();
+          const body = await readJsonBody(req, isMessageBody);
+          if (!body) return badRequest("Invalid request body");
+          const message = body.message.trim();
           if (!message) return badRequest("Empty message");
           return sseReply(session.send({ message }));
         },
@@ -204,12 +244,8 @@ export function startWebServer(options: WebServerOptions): WebServer {
           const files = storeFor(req.params.agent);
           if (!files) return notFound("No workspace for this agent");
           const name = decodeURIComponent(req.params.name);
-          const body = (await req.json().catch(() => null)) as {
-            content?: string;
-          } | null;
-          if (typeof body?.content !== "string") {
-            return badRequest("Missing content");
-          }
+          const body = await readJsonBody(req, isContentBody);
+          if (!body) return badRequest("Missing content");
           await files.write(name, body.content);
           return Response.json({ ok: true, name });
         },

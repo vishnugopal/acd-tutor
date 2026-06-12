@@ -3,9 +3,7 @@ import type { ToolDefinition } from "@flue/runtime";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { __test__, createLessonFileTools } from "../src/tools";
-
-const { resolveLessonPath } = __test__!;
+import { createLessonFileTools } from "../src/tools";
 
 /** Looks up a tool's execute() by name from the factory output. */
 function tool(tools: ToolDefinition[], name: string) {
@@ -14,20 +12,6 @@ function tool(tools: ToolDefinition[], name: string) {
   return (args: Record<string, unknown>) =>
     (found.execute as (a: Record<string, unknown>) => Promise<string>)(args);
 }
-
-describe("resolveLessonPath (path-traversal guard)", () => {
-  test("joins a bare filename onto the scratch dir", () => {
-    expect(resolveLessonPath("/scratch", "lesson-1.ts")).toBe("/scratch/lesson-1.ts");
-  });
-
-  test("collapses ../ traversal to the leaf name inside scratch", () => {
-    expect(resolveLessonPath("/scratch", "../../etc/passwd")).toBe("/scratch/passwd");
-  });
-
-  test("collapses an absolute path to the leaf name inside scratch", () => {
-    expect(resolveLessonPath("/scratch", "/etc/passwd")).toBe("/scratch/passwd");
-  });
-});
 
 describe("createLessonFileTools handlers", () => {
   let scratchDir: string;

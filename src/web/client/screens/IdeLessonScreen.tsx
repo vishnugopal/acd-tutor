@@ -1,14 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  clearLessonFiles,
-  listLessonFiles,
-  readLessonFile,
-  takeOpenRequest,
-  writeLessonFile,
-} from "../api";
-import { AppBar } from "../components/AppBar";
+import { useCallback, useEffect, useState } from "react";
+import { clearLessonFiles, readLessonFile } from "../api";
+import { LessonScreenShell } from "../components/LessonScreenShell";
 import { Mascot } from "../components/Mascot";
-import { OptionsMenu } from "../components/OptionsMenu";
 import { Toast } from "../components/Toast";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { ChatSheet } from "../components/chat/ChatSheet";
@@ -18,13 +11,11 @@ import { MarkdownEditor } from "../components/lesson/MarkdownEditor";
 import type { EditorKind } from "../data/agents";
 import { STATIC_GAME } from "../data/gamification";
 import { useAgentChat } from "../hooks/useAgentChat";
+import { useAutosave } from "../hooks/useAutosave";
+import { useLessonFileSync } from "../hooks/useLessonFileSync";
 import { useToast } from "../hooks/useToast";
-import { lessonNumber, latestLessonFile, sortLessonFiles } from "../lib/lessonFiles";
+import type { SaveState } from "../lib/autosave";
 import type { AgentInfo } from "../types";
-
-const AUTOSAVE_DELAY_MS = 1000;
-
-type SaveState = "idle" | "unsaved" | "saving" | "saved" | "error";
 
 const SAVE_LABEL: Record<SaveState, string> = {
   idle: "",
@@ -43,10 +34,9 @@ const TASK_STRIP_COPY: Record<EditorKind, string> = {
 /**
  * The workbook lesson screen (ACD + essay tutors): a real editor over the
  * lesson files the tutor manages, plus live chat. `editorKind` picks the
- * editor (CodeMirror for .ts lessons, MDXEditor for .md essays). The editor
- * autosaves once typing stops, so when the student asks for feedback the
- * tutor's readFile sees their latest work — same loop as the console runner,
- * minus the external $EDITOR.
+ * editor (CodeMirror for .ts lessons, MDXEditor for .md essays). Autosave
+ * lives in useAutosave, workspace syncing in useLessonFileSync — this
+ * component is layout plus the wiring between them.
  */
 export function IdeLessonScreen({
   agent,
@@ -58,153 +48,73 @@ export function IdeLessonScreen({
   onExit: () => void;
 }) {
   const { toast, showToast } = useToast();
-
-  const [files, setFiles] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [unread, setUnread] = useState(true); // greeting arrives unread
 
-  // Refs mirror state the async callbacks need without re-subscribing.
-  const codeRef = useRef(code);
-  codeRef.current = code;
-  const activeRef = useRef(active);
-  activeRef.current = active;
-  const savedRef = useRef(""); // last content known to be on disk
+  const autosave = useAutosave({ agentId: agent.id, file: active, content: code });
+  const { flush, markSaved } = autosave;
 
   const openFile = useCallback(
     async (name: string) => {
       const content = await readLessonFile(agent.id, name);
       if (content === null) return;
-      savedRef.current = content;
+      markSaved(content);
       setCode(content);
       setActive(name);
-      setSaveState("idle");
     },
-    [agent.id],
+    [agent.id, markSaved],
   );
 
-  /** Flush a pending (debounced) edit so switching files never loses work. */
-  const flushPendingSave = useCallback(async () => {
-    const file = activeRef.current;
-    if (file && codeRef.current !== savedRef.current) {
-      await writeLessonFile(agent.id, file, codeRef.current).catch(() => {});
-      savedRef.current = codeRef.current;
-    }
-  }, [agent.id]);
-
-  /** Sync with the tutor's workspace after every reply (it may create/edit files). */
-  const syncFiles = useCallback(async () => {
-    const latest = sortLessonFiles(await listLessonFiles(agent.id));
-    setFiles(latest);
-
-    // The tutor's openFile call (web mode) wins: open exactly that file.
-    const requested = await takeOpenRequest(agent.id).catch(() => null);
-    if (requested && latest.includes(requested)) {
-      if (requested !== activeRef.current) {
-        await flushPendingSave();
-        await openFile(requested);
-        showToast(`📂 Beep opened ${requested} for you`);
-        return;
-      }
-    }
-
-    const newest = latestLessonFile(latest);
-    const current = activeRef.current;
-    const dirty = codeRef.current !== savedRef.current;
-
-    if (!newest) return;
-    if (current === null) {
-      // First file just appeared — open it.
-      await openFile(newest);
-      showToast(`📂 ${newest} is ready!`);
-      return;
-    }
-    const newer =
-      newest !== current &&
-      (lessonNumber(newest) ?? 0) > (lessonNumber(current) ?? 0);
-    if (newer) {
-      if (dirty) {
-        // Don't yank unsaved work out from under the student.
-        showToast(`📂 New lesson ready: ${newest}`);
-      } else {
-        await openFile(newest);
-        showToast(`📂 ${newest} unlocked!`);
-      }
-      return;
-    }
-    if (!dirty) {
-      // The tutor may have rewritten the current file (e.g. added comments).
-      const content = await readLessonFile(agent.id, current);
-      if (content !== null && content !== savedRef.current) {
-        savedRef.current = content;
-        setCode(content);
-      }
-    }
-  }, [agent.id, flushPendingSave, openFile, showToast]);
+  const { files, sync, resetFiles } = useLessonFileSync(agent.id, {
+    snapshot: () => ({ active, dirty: autosave.isDirty, content: code }),
+    flush,
+    open: openFile,
+    replace: (content) => {
+      markSaved(content);
+      setCode(content);
+    },
+    toast: showToast,
+  });
 
   const chat = useAgentChat({
     agentId: agent.id,
     greeting: agent.greeting,
     onReplyDone: () => {
       setUnread(true);
-      void syncFiles();
+      void sync();
     },
   });
 
   // Initial load of whatever workspace already exists.
   useEffect(() => {
-    void syncFiles();
-  }, [syncFiles]);
+    void sync();
+  }, [sync]);
 
-  // Autosave: debounce while typing; save once the editor goes quiet.
-  useEffect(() => {
-    if (!active) return;
-    if (code === savedRef.current) return;
-    setSaveState("unsaved");
-    const timer = setTimeout(async () => {
-      const snapshot = codeRef.current;
-      const file = activeRef.current;
-      if (!file) return;
-      setSaveState("saving");
-      try {
-        await writeLessonFile(agent.id, file, snapshot);
-        savedRef.current = snapshot;
-        setSaveState(codeRef.current === snapshot ? "saved" : "unsaved");
-      } catch {
-        setSaveState("error");
-      }
-    }, AUTOSAVE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [code, active, agent.id]);
-
-  /** Flush any pending edit before switching files so nothing is lost. */
+  /** Flush the pending edit before switching files — and stay if it fails. */
   const handleSelectFile = useCallback(
     async (name: string) => {
-      if (name === activeRef.current) return;
-      await flushPendingSave();
+      if (name === active) return;
+      if (!(await flush())) {
+        showToast("⚠️ Couldn't save your work — staying on this file.");
+        return;
+      }
       await openFile(name);
     },
-    [flushPendingSave, openFile],
+    [active, flush, openFile, showToast],
   );
 
   /** Wipe the workspace + conversation so the tutor restarts at lesson 1. */
   const handleStartFromScratch = useCallback(async () => {
-    if (chat.isBusy) return;
-    const sure = window.confirm(
-      "Start over from lesson 1? Your lesson files and this chat will be cleared.",
-    );
-    if (!sure) return;
     await clearLessonFiles(agent.id).catch(() => {});
     chat.reset();
-    setFiles([]);
+    resetFiles();
     setActive(null);
     setCode("");
-    savedRef.current = "";
-    setSaveState("idle");
+    markSaved("");
     setUnread(true);
     showToast("🌱 Fresh start! Say hi to Beep to begin lesson 1.");
-  }, [agent.id, chat, showToast]);
+  }, [agent.id, chat, markSaved, resetFiles, showToast]);
 
   const mood = chat.isBusy ? "think" : "idle";
   const hasWorkspace = files.length > 0;
@@ -212,28 +122,21 @@ export function IdeLessonScreen({
   return (
     // Desktop: lock the screen to the viewport so the chat dock keeps a fixed
     // height and scrolls internally instead of growing with the transcript.
-    <section className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both] min-[900px]:h-dvh min-[900px]:max-h-dvh min-[900px]:overflow-hidden">
-      <AppBar
-        brand={
-          <span className="brand flex items-center gap-2 text-[17px] font-extrabold tracking-[-0.01em] whitespace-nowrap">
-            {agent.label}
-          </span>
-        }
-        onBack={onExit}
-        showHearts={false}
-        menu={
-          <OptionsMenu
-            items={[
-              {
-                label: "🌱 Start from scratch",
-                onSelect: () => void handleStartFromScratch(),
-                danger: true,
-              },
-            ]}
-          />
-        }
-      />
-
+    <LessonScreenShell
+      className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both] min-[900px]:h-dvh min-[900px]:max-h-dvh min-[900px]:overflow-hidden"
+      brand={
+        <span className="brand flex items-center gap-2 text-[17px] font-extrabold tracking-[-0.01em] whitespace-nowrap">
+          {agent.label}
+        </span>
+      }
+      onExit={onExit}
+      showHearts={false}
+      busy={chat.isBusy}
+      confirmText="Start over from lesson 1? Your lesson files and this chat will be cleared."
+      onStartFromScratch={() => void handleStartFromScratch()}
+      debugMode={chat.debugMode}
+      onToggleDebug={chat.toggleDebug}
+    >
       <div className="ide-main flex min-h-0 flex-1 flex-col min-[900px]:flex-row">
         <div className="ide-left flex min-h-0 min-w-0 flex-1 flex-col">
           {/* extra top padding gives the peeking mascot headroom below the
@@ -276,7 +179,7 @@ export function IdeLessonScreen({
 
           <div className="statusbar mx-4 flex items-center gap-[14px] rounded-b-xl bg-brand-slate px-[14px] py-[7px] font-mono text-[11.5px] text-[#e7f0ed]">
             <span>⎇ {active ?? "—"}</span>
-            <span className="scan text-cy-yellow">{SAVE_LABEL[saveState]}</span>
+            <span className="scan text-cy-yellow">{SAVE_LABEL[autosave.saveState]}</span>
             <span className="flex-1" />
             <span className="hearts tracking-[2px] text-[#ffb8a0]">
               {Array.from({ length: STATIC_GAME.maxHearts }, (_, i) => (
@@ -310,6 +213,6 @@ export function IdeLessonScreen({
       </div>
 
       <Toast message={toast} />
-    </section>
+    </LessonScreenShell>
   );
 }

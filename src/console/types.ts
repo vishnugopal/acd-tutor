@@ -1,36 +1,18 @@
+import type { AgentAction, AgentPresentation } from "../shared/catalog";
+import type { AgentChunk } from "../shared/chunks";
+
 /** A persistent button rendered above the input line; pressing it sends `message`. */
-export interface ConsoleAction {
-  /** Button label, e.g. "Check my work". */
-  label: string;
-  /** The message sent to `reply` when the button is pressed. */
-  message: string;
-}
+export type ConsoleAction = AgentAction;
 
 /** One streamed chunk of a reply: prose, or a diagnostic line. */
-export interface ReplyChunk {
-  kind: "text" | "debug";
-  text: string;
-}
+export type ReplyChunk = AgentChunk;
 
 /**
  * One selectable agent. The console renders these in a startup menu and stays
  * agnostic about what they are — `id` is an opaque handle passed back to
  * `createReply`, and the presentation fields drive the chat once chosen.
  */
-export interface AgentChoice {
-  /** Opaque agent handle, passed to `createReply` once selected. */
-  id: string;
-  /** Menu label, e.g. "ACD Tutor". */
-  label: string;
-  /** Optional one-line menu description. */
-  description?: string;
-  /** Shown once at the top of the transcript. */
-  greeting?: string;
-  /** Printed after the UI exits. */
-  farewell?: string;
-  /** Always-visible action buttons above the input line. */
-  actions?: ConsoleAction[];
-}
+export type AgentChoice = AgentPresentation;
 
 export interface ConsoleOptions {
   /** Agents offered at startup (≥1). A single agent skips the menu. */
