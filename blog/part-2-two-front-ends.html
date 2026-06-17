@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Agent, Two Front-Ends</title>
+<meta name="description" content="Part 1 ended with a dare: given the layering, how hard is a web UI? Part 2 cashes it in — one agent, a terminal and a browser, and the single seam that lets one stream feed both.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #d23669;
+    --accent-soft: rgba(210, 54, 105, 0.08);
+    --code-bg: #f6f4f0;
+    --code-border: #e9e5de;
+    --inline-code-bg: rgba(210, 54, 105, 0.06);
+    --rule: #ececec;
+    --kw: #9a4eae;       /* keywords */
+    --str: #2b7a4b;      /* strings */
+    --fn: #3b6ec7;       /* functions */
+    --cm: #9b958c;       /* comments */
+    --aside-bg: #fbf7ee;
+    --aside-border: #efe5cd;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-size: 17px; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .container {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 0 1.25rem 6rem;
+  }
+
+  /* ---------- header ---------- */
+  header.site {
+    padding: 2.5rem 0 0;
+    font-size: 0.95rem;
+  }
+
+  h1 {
+    font-size: 2.6rem;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.022em;
+    margin: 0.6rem 0 0.35rem;
+  }
+  .post-meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 3rem;
+  }
+
+  /* ---------- prose ---------- */
+  h2 {
+    font-size: 1.65rem;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    margin: 3.2rem 0 1rem;
+  }
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 2.4rem 0 0.8rem;
+  }
+  p { margin: 0 0 1.45rem; }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    background-image: linear-gradient(transparent 70%, var(--accent-soft) 0);
+  }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 3rem 0;
+  }
+
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1.45rem; }
+  li { margin-bottom: 0.45rem; }
+  li::marker { color: var(--accent); }
+
+  blockquote {
+    margin: 1.8rem 0;
+    padding: 0.1rem 0 0.1rem 1.3rem;
+    border-left: 3px solid var(--accent);
+    color: #444;
+    font-style: italic;
+  }
+  blockquote p { margin-bottom: 0.5rem; }
+
+  /* ---------- code ---------- */
+  code {
+    font-family: "SF Mono", ui-monospace, "Cascadia Code", "JetBrains Mono",
+      Menlo, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  p code, li code, h2 code, h3 code, aside code {
+    background: var(--inline-code-bg);
+    padding: 0.12em 0.35em;
+    border-radius: 4px;
+    color: #ad2955;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1.8rem 0;
+    line-height: 1.6;
+  }
+  pre code { font-size: 0.83rem; color: #333; }
+  .code-label {
+    display: block;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 1.8rem 0 -1.3rem;
+    text-align: right;
+  }
+  .code-label + pre { margin-top: 1.6rem; }
+
+  .kw  { color: var(--kw); }
+  .str { color: var(--str); }
+  .fn  { color: var(--fn); }
+  .cm  { color: var(--cm); font-style: italic; }
+
+  /* ---------- asides ---------- */
+  aside {
+    background: var(--aside-bg);
+    border: 1px solid var(--aside-border);
+    border-radius: 10px;
+    padding: 1rem 1.3rem;
+    margin: 1.8rem 0;
+    font-size: 0.95rem;
+  }
+  aside p:last-child { margin-bottom: 0; }
+  aside .aside-title {
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #8a6d1d;
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  /* ---------- diagrams ---------- */
+  figure.diagram {
+    margin: 2.4rem 0;
+  }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.9rem;
+    text-align: center;
+  }
+
+  figure.diagram svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  figure.diagram svg.stack-svg {
+    max-width: 30rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- comparison table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8rem 0;
+    font-size: 0.92rem;
+  }
+  th {
+    text-align: left;
+    font-weight: 700;
+    padding: 0.55rem 0.8rem;
+    border-bottom: 2px solid var(--text);
+  }
+  td {
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  footer.site {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 600px) {
+    html { font-size: 16px; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="site">
+  <h1>One Agent, Two Front-Ends</h1>
+  <div class="post-meta">June 2026 · Part 2 · 22 min read</div>
+</header>
+
+<main>
+
+<p><a href="part-1-fundamentals.html">Part 1</a> built a Socratic programming tutor as a CLI agent on <a href="https://www.npmjs.com/package/@flue/cli">Flue</a>. It ended on a dare. The tutor was a terminal app — an <a href="https://github.com/vadimdemedes/ink">Ink</a> (React-in-the-terminal) UI talking to a Flue agent over HTTP — and I noted that the agent was <em>already</em> an HTTP server speaking SSE, and the console was <em>just one consumer</em> of an <code>AsyncIterable</code> of chunks. So:</p>
+
+<blockquote>
+<p>Given that layering, how hard would it be to add a <em>web UI</em> to this? A browser frontend would reuse layers 1–3 untouched and swap only the rendering. I suspect it's a weekend — try it and tell me.</p>
+</blockquote>
+
+<p>This post is me telling you. I built the web UI, and the honest answer is in two parts. The rendering swap really was a weekend — the agent, the runner, the transport never moved. But the web UI also <em>found the soft spots</em> in the abstraction and made me firm them up: a chunk of logic that lived inside the console got pulled out into a shared layer, a single agent quietly became three, and the one genuinely hard problem — the filesystem that Part 1 made part of the conversation — had to be rebuilt for a browser that has no filesystem.</p>
+
+<p>The whole arc is real commits, <a href="https://github.com/vishnugopal/acd-tutor/pull/11">PR #11</a> through <a href="https://github.com/vishnugopal/acd-tutor/pull/21">#21</a>, and every snippet below links to its source. The spine of the story is one idea: <strong>where exactly is the seam between "the agent" and "a UI," and is it the same seam for a terminal and a browser?</strong></p>
+
+<h2>The seam, named</h2>
+
+<p>Part 1's layering had a transport layer — <code>src/agent-io.ts</code> — whose whole job was to pin an agent and a conversation and hand back chunks. Strip it to its contract and the entire architecture of this post is two type declarations:</p>
+
+<span class="code-label">src/agent-io.ts &amp; src/shared/chunks.ts</span>
+<pre><code><span class="cm">// One streamed piece of an agent reply.</span>
+<span class="kw">export type</span> AgentChunk =
+  | { kind: <span class="str">"text"</span>; text: string }   <span class="cm">// reply prose, streamed as deltas</span>
+  | { kind: <span class="str">"debug"</span>; text: string };  <span class="cm">// tool calls, turns, logs, …</span>
+
+<span class="kw">export interface</span> AgentSession {
+  <span class="cm">// Conversation id — memory lives server-side, keyed to this.</span>
+  instanceId: string;
+  <span class="cm">// Invoke the agent once; yield the reply's chunks as they stream in.</span>
+  <span class="fn">send</span>(payload: DirectAgentPayload): AsyncIterable&lt;AgentChunk&gt;;
+}</code></pre>
+
+<p>That's the seam. Above it: anything that wants to show a conversation to a human. Below it: Flue, the model, the tools, the loop. The console UI consumes <code>send()</code>. The claim of this post is that a browser is <em>another consumer of the exact same method</em> — and that almost everything interesting falls out of taking that claim literally.</p>
+
+<p>Notice what the chunk type already gives us for free. There are two kinds: <code>text</code> (the reply you read) and <code>debug</code> (the tool calls and token counts behind Part 1's <code>/debug</code> mode). Whatever consumes this stream gets streaming <em>and</em> observability in one vocabulary. The web UI will reuse both.</p>
+
+<figure class="diagram">
+  <!-- image file: images/two-front-ends.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 552" class="stack-svg" role="img" aria-label="A layered stack. At the top, two boxes side by side: the terminal UI (src/console, Ink) and the web UI (src/web/client, React in the browser). Both feed down into a single highlighted seam, src/agent-io.ts, exposing session.send returning an AsyncIterable of AgentChunk. Below the seam, three shared layers untouched by either UI: src/shared (pure calculations), src/agents and tools and runner, and the Flue server; at the base, the lesson-file workspace." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <defs>
+      <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#d23669"/>
+      </marker>
+    </defs>
+
+    <!-- two UI heads -->
+    <rect x="24" y="14" width="244" height="78" rx="12" fill="#fbfaf8" stroke="#b8b2a7" stroke-width="1.5"/>
+    <text x="146" y="38" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">TERMINAL UI</text>
+    <text x="146" y="58" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">src/console/ · Ink</text>
+    <text x="146" y="78" font-size="10.5" fill="#6b6b6b" text-anchor="middle">useChatStream</text>
+
+    <rect x="292" y="14" width="244" height="78" rx="12" fill="#fdf7f9" stroke="#d23669" stroke-width="2"/>
+    <text x="414" y="38" font-size="10" font-weight="700" letter-spacing="1.2" fill="#d23669" text-anchor="middle">WEB UI · NEW</text>
+    <text x="414" y="58" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">src/web/client/ · React</text>
+    <text x="414" y="78" font-size="10.5" fill="#6b6b6b" text-anchor="middle">useAgentChat</text>
+
+    <line x1="146" y1="92" x2="146" y2="126" stroke="#d23669" stroke-width="2" marker-end="url(#ap)"/>
+    <line x1="414" y1="92" x2="414" y2="126" stroke="#d23669" stroke-width="2" marker-end="url(#ap)"/>
+
+    <!-- the seam -->
+    <rect x="24" y="128" width="512" height="64" rx="12" fill="#fdf7f9" stroke="#d23669" stroke-width="2.5"/>
+    <text x="280" y="152" font-size="10" font-weight="800" letter-spacing="1.4" fill="#d23669" text-anchor="middle">THE SEAM — src/agent-io.ts</text>
+    <text x="280" y="176" font-size="12" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#1a1a1a" text-anchor="middle">send(payload): AsyncIterable&lt;AgentChunk&gt;</text>
+
+    <line x1="280" y1="192" x2="280" y2="212" stroke="#d23669" stroke-width="2" marker-end="url(#ap)"/>
+
+    <!-- shared layers -->
+    <rect x="24" y="214" width="512" height="58" rx="10" fill="#faf9f6" stroke="#b8b2a7" stroke-width="1.5"/>
+    <text x="280" y="238" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">src/shared/ — stream-fold · chunks · catalog</text>
+    <text x="280" y="258" font-size="10.5" fill="#6b6b6b" text-anchor="middle">pure calculations · bundle into browser, host &amp; Flue alike</text>
+
+    <rect x="24" y="280" width="512" height="58" rx="10" fill="#faf9f6" stroke="#b8b2a7" stroke-width="1.5"/>
+    <text x="280" y="304" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">src/agents · profiles · tools · runner</text>
+    <text x="280" y="324" font-size="10.5" fill="#6b6b6b" text-anchor="middle">agent definitions, lesson-file tools, the Flue launcher</text>
+
+    <rect x="24" y="346" width="512" height="58" rx="10" fill="#faf9f6" stroke="#b8b2a7" stroke-width="1.5"/>
+    <text x="280" y="370" font-size="12" font-weight="700" fill="#333" text-anchor="middle">Flue server</text>
+    <text x="280" y="390" font-size="10.5" fill="#6b6b6b" text-anchor="middle">the loop · streaming · tool dispatch · conversation memory</text>
+
+    <rect x="24" y="412" width="512" height="56" rx="10" fill="#fbfaf8" stroke="#e9e5de" stroke-width="1.5"/>
+    <text x="280" y="435" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">WORKSPACE</text>
+    <text x="280" y="455" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">lesson-N.ts — the agent writes, the learner edits</text>
+
+    <text x="280" y="500" font-size="11" font-style="italic" fill="#9b958c" text-anchor="middle">everything below the pink seam is shared and untouched —</text>
+    <text x="280" y="518" font-size="11" font-style="italic" fill="#9b958c" text-anchor="middle">the two UIs differ only above it</text>
+  </svg>
+  <figcaption>The same stack from Part 1, with a second head bolted on at the seam.</figcaption>
+</figure>
+
+<h2>First, a prototype that lied</h2>
+
+<p>The temptation, with a clean seam in hand, is to wire the browser straight to the agent and start debugging two hard things at once: the UI's <em>interaction design</em> and the agent <em>integration</em>. I didn't. The <a href="https://github.com/vishnugopal/acd-tutor/pull/14">first web commit</a> is a throwaway: a standalone React app under <code>prototypes/</code> with <strong>no agent behind it at all</strong>. Every tutor reply was scripted dummy data.</p>
+
+<p>The point was to settle questions that have nothing to do with Flue. What does the home screen look like with a course of seven lessons? Where does the chat dock live on desktop versus mobile? How does a code editor feel next to a chat panel? How fast should autosave fire? You can answer all of that against canned data in an afternoon, and you should, because none of it should be entangled with stream parsing.</p>
+
+<p>The prototype's <code>README</code> is explicit that it's scaffolding, and — crucially — it names the seam where the real agent will later plug in:</p>
+
+<blockquote>
+<p><strong>Standalone</strong> — not wired to the Flue server yet; all tutor behavior is scripted dummy data so the interactions can be refined before integration. […] Integration seam for later: <code>useScriptedChat.send()</code> → replace with the Flue agent-session <code>send()</code> (streaming chunks land as tutor messages).</p>
+</blockquote>
+
+<p>Read that last line again. The prototype's fake chat hook was <em>deliberately shaped like the real seam</em> — a <code>send()</code> that yields chunks. The prototype wasn't guessing at an interface; it was building against the one that already existed in <code>agent-io.ts</code>, with a stub on the other end. Once the real UI shipped, the prototype had served its purpose and <a href="https://github.com/vishnugopal/acd-tutor/pull/19">PR #19 deleted the whole directory</a> — 1,951 lines, gone in one commit, no regrets.</p>
+
+<aside>
+<span class="aside-title">Prototype against the seam, not around it</span>
+<p>A scripted prototype is only useful if throwing it away is cheap and its lessons transfer. Both held here <em>because</em> the fake <code>send()</code> matched the real <code>send()</code>. The design work (layout, autosave timing, the mascot) moved to the real UI; the fake data didn't. If your prototype invents its own data shapes, you've prototyped a different app.</p>
+</aside>
+
+<h2>The backend is an adapter, not a rewrite</h2>
+
+<p>The <a href="https://github.com/vishnugopal/acd-tutor/pull/15">real web UI</a> needed a server. Not an agent server — that already exists — but something to serve the browser bundle and relay the chunk stream over HTTP. Here is the entire web entry point, and the thing to notice is how much it <em>doesn't</em> do:</p>
+
+<span class="code-label">src/web/main.ts</span>
+<pre><code><span class="cm">// The Flue server inherits this: the openFile tool signals the web</span>
+<span class="cm">// editor instead of spawning the learner's local $EDITOR. (More below.)</span>
+process.env.TUTOR_OPEN_MODE = <span class="str">"web"</span>;
+
+<span class="cm">// Boot the agent server exactly like the console runner does.</span>
+<span class="kw">const</span> { client } = <span class="kw">await</span> <span class="fn">startFlueServer</span>({ port: <span class="fn">Number</span>(process.env.FLUE_PORT ?? <span class="str">"3789"</span>) });
+
+<span class="cm">// Serve the Code Buddy web app on top of it.</span>
+<span class="kw">const</span> web = <span class="fn">startWebServer</span>({
+  client,
+  agents: AGENT_CHOICES,
+  workspaces: WORKSPACES,
+  port: <span class="fn">Number</span>(process.env.WEB_PORT ?? <span class="str">"3790"</span>),
+});</code></pre>
+
+<p>That <code>startFlueServer()</code> is the <em>same</em> runner from Part 1 — builds the bundle, spawns <code>dist/server.mjs</code>, polls until ready, owns shutdown. The console's <code>main.ts</code> calls it; the web's <code>main.ts</code> calls it. Neither knows the other exists. This file is pure composition, exactly the role Part 1 assigned to <code>src/main.ts</code>: start the server, then attach a UI.</p>
+
+<p>So what does <code>startWebServer</code> add? A thin HTTP/SSE skin over the same <code>AgentSession</code>. The one function that matters is the bridge from an <code>AsyncIterable&lt;AgentChunk&gt;</code> to a <code>text/event-stream</code> response — and it's almost insultingly small:</p>
+
+<span class="code-label">src/web/server.ts</span>
+<pre><code><span class="cm">// One `data: &lt;json AgentChunk&gt;` event per chunk, then a terminal `done`.</span>
+<span class="kw">function</span> <span class="fn">sseReply</span>(chunks: AsyncIterable&lt;AgentChunk&gt;): Response {
+  <span class="kw">const</span> stream = <span class="kw">new</span> <span class="fn">ReadableStream</span>({
+    <span class="kw">async</span> <span class="fn">start</span>(controller) {
+      <span class="kw">const</span> emit = (frame) =&gt;
+        controller.<span class="fn">enqueue</span>(<span class="fn">encode</span>(<span class="str">`data: ${</span>JSON.<span class="fn">stringify</span>(frame)<span class="str">}\n\n`</span>));
+      <span class="kw">try</span> {
+        <span class="kw">for await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> chunks) <span class="fn">emit</span>(chunk);  <span class="cm">// ← the whole adapter</span>
+        <span class="fn">emit</span>({ kind: <span class="str">"done"</span> });
+      } <span class="kw">catch</span> (err) {
+        <span class="fn">emit</span>({ kind: <span class="str">"error"</span>, text: <span class="fn">String</span>(err) });
+      } <span class="kw">finally</span> {
+        controller.<span class="fn">close</span>();
+      }
+    },
+  });
+  <span class="kw">return new</span> <span class="fn">Response</span>(stream, {
+    headers: { <span class="str">"Content-Type"</span>: <span class="str">"text/event-stream"</span> },
+  });
+}</code></pre>
+
+<p>The route that uses it is one line of real work: <code>return sseReply(session.send({ message }))</code>. The server takes the chunk stream the agent layer already produces and copies each chunk onto the wire as JSON. The two extra frame kinds — <code>done</code> and <code>error</code> — are the wire's punctuation: a stream that ends cleanly emits <code>done</code>, and a stream that throws emits <code>error</code> so a truncated reply can never <em>look</em> complete to the browser. (The real file also sends a comment heartbeat every 15 seconds, so a connection stays open through long tool-heavy stretches where the agent emits nothing.)</p>
+
+<p>This is the payoff of Part 1's insistence that the agent is a <em>server you talk to</em>, not a script you run. Adding HTTP transport for a browser meant writing an adapter, not relocating any logic.</p>
+
+<h2>The browser is just another consumer</h2>
+
+<p>On the browser side, the mirror image: take SSE off the wire and turn it back into the same <code>AsyncIterable&lt;AgentChunk&gt;</code> the server started with. It's an async generator over <code>fetch</code>:</p>
+
+<span class="code-label">src/web/client/api.ts</span>
+<pre><code><span class="kw">export async function</span>* <span class="fn">streamReply</span>(
+  sessionId: string, message: string, signal?: AbortSignal,
+): AsyncGenerator&lt;ReplyChunk&gt; {
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">`/api/sessions/${</span>sessionId<span class="str">}/messages`</span>, {
+    method: <span class="str">"POST"</span>, body: JSON.<span class="fn">stringify</span>({ message }), signal,
+  });
+  <span class="kw">const</span> reader = res.body.<span class="fn">getReader</span>();
+  <span class="kw">let</span> buffer = <span class="str">""</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> { done, value } = <span class="kw">await</span> reader.<span class="fn">read</span>();
+    <span class="kw">if</span> (done) <span class="kw">break</span>;
+    buffer += decoder.<span class="fn">decode</span>(value, { stream: <span class="kw">true</span> });
+    <span class="kw">const</span> events = buffer.<span class="fn">split</span>(<span class="str">"\n\n"</span>);   <span class="cm">// SSE frames are \n\n-delimited</span>
+    buffer = events.<span class="fn">pop</span>() ?? <span class="str">""</span>;          <span class="cm">// keep the half-frame for next read</span>
+    <span class="kw">for</span> (<span class="kw">const</span> event <span class="kw">of</span> events) <span class="kw">for</span> (<span class="kw">const</span> line <span class="kw">of</span> event.<span class="fn">split</span>(<span class="str">"\n"</span>)) {
+      <span class="kw">if</span> (!line.<span class="fn">startsWith</span>(<span class="str">"data: "</span>)) <span class="kw">continue</span>;
+      <span class="kw">const</span> frame = <span class="fn">parseStreamFrame</span>(line.<span class="fn">slice</span>(<span class="str">6</span>));
+      <span class="kw">if</span> (frame === <span class="kw">null</span>) <span class="kw">continue</span>;             <span class="cm">// malformed: skip, don't crash</span>
+      <span class="kw">if</span> (frame.kind === <span class="str">"done"</span>) <span class="kw">return</span>;
+      <span class="kw">if</span> (frame.kind === <span class="str">"error"</span>) <span class="kw">throw new</span> <span class="fn">Error</span>(frame.text);
+      <span class="kw">yield</span> frame;                          <span class="cm">// ← back to an AgentChunk</span>
+    }
+  }
+  <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">"Connection dropped before the reply finished"</span>);
+}</code></pre>
+
+<p>Different transport, identical shape. The console's <code>agent-io.ts</code> consumed <code>@flue/sdk</code>'s SSE iterator directly; the browser can't import that, so it re-implements the parse over <code>fetch</code> — but what comes out the far end is the same stream of <code>{ kind, text }</code> chunks. The <code>signal</code> parameter is the one genuinely new concern: a browser tab can navigate away mid-reply, so the consumer can abort the fetch. A terminal can't navigate away.</p>
+
+<h2>The fold that both UIs share</h2>
+
+<p>Here is where the abstraction got <em>sharpened</em>, and it's the heart of this post.</p>
+
+<p>A chunk stream is not a transcript. Streaming raw chunks gives you a problem: when <code>/debug</code> mode is on and a tool call lands in the <em>middle</em> of a reply, you want the transcript to read in order — the prose written so far, then the tool-call line, then the rest of the prose. And when debug mode is off, those <code>debug</code> chunks should vanish entirely. Folding a flat chunk stream into ordered transcript messages is real logic, with state.</p>
+
+<p>In Part 1, that logic lived inside the console's send loop. When the web UI needed the <em>exact same behavior</em>, the wrong move would have been to copy it. The <a href="https://github.com/vishnugopal/acd-tutor/pull/20">right move</a> was to recognize it as a <strong>pure calculation</strong> and lift it into <code>src/shared/</code>, where both UIs — and the test suite — import it:</p>
+
+<span class="code-label">src/shared/stream-fold.ts</span>
+<pre><code><span class="cm">// In-flight reply state, folded over the chunk stream (data).</span>
+<span class="kw">export interface</span> StreamState {
+  text: string;       <span class="cm">// prose accumulated since the last flush</span>
+  replied: boolean;   <span class="cm">// has any prose been flushed yet?</span>
+}
+
+<span class="cm">// Fold one chunk into the reply state (calculation). A visible debug line</span>
+<span class="cm">// flushes the buffered prose first, so the transcript stays chronological;</span>
+<span class="cm">// hidden debug lines fold away entirely.</span>
+<span class="kw">export function</span> <span class="fn">foldChunk</span>(state: StreamState, chunk: AgentChunk, debugMode: boolean) {
+  <span class="kw">if</span> (chunk.kind === <span class="str">"debug"</span>) {
+    <span class="kw">if</span> (!debugMode) <span class="kw">return</span> { state, append: [] };
+    <span class="kw">const</span> flushed = state.text === <span class="str">""</span> ? [] : [{ role: <span class="str">"tutor"</span>, text: state.text }];
+    <span class="kw">return</span> {
+      state: { text: <span class="str">""</span>, replied: state.replied || state.text !== <span class="str">""</span> },
+      append: [...flushed, { role: <span class="str">"debug"</span>, text: chunk.text }],
+    };
+  }
+  <span class="kw">return</span> { state: { ...state, text: state.text + chunk.text }, append: [] };
+}</code></pre>
+
+<p>No React. No DOM. No <code>node:</code> imports, no <code>process.env</code>. Given a state, a chunk, and a flag, it returns the next state and any transcript messages to append. That purity is what lets it bundle into the browser, the Node host, <em>and</em> the Flue build without modification — and what makes it trivially unit-testable, which it now is.</p>
+
+<p>And now the two UIs collapse to the same five lines. The console's hook:</p>
+
+<span class="code-label">src/console/useChatStream.ts</span>
+<pre><code><span class="kw">let</span> state = initialStreamState;
+<span class="kw">for await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> <span class="fn">reply</span>(line)) {
+  <span class="kw">const</span> folded = <span class="fn">foldChunk</span>(state, chunk, debugModeRef.current);
+  state = folded.state;
+  <span class="fn">append</span>(...folded.append);          <span class="cm">// push completed messages to the transcript</span>
+  <span class="fn">setStreamingText</span>(state.text);       <span class="cm">// the in-flight line, re-rendered live</span>
+}
+<span class="fn">append</span>(...<span class="fn">finishStream</span>(state, emptyReplyMessage));</code></pre>
+
+<p>The web's hook, <code>useAgentChat</code>, runs the <em>identical</em> loop — same <code>foldChunk</code>, same <code>finishStream</code> — differing only in that <code>reply(line)</code> is <code>streamReply(sessionId, …)</code> and <code>append</code>/<code>setStreamingText</code> write to browser React state instead of Ink React state. The transcript logic is shared to the line; only the rendering target differs.</p>
+
+<aside>
+<span class="aside-title">The tutor takes its own medicine</span>
+<p>The thing this tutor <em>teaches</em> is the Actions–Calculations–Data split from <em>Grokking Simplicity</em>: pull the pure calculation out of the effectful action so you can test it and reuse it. Extracting <code>foldChunk</code> — a calculation — out of the console's stateful send loop — an action — is that exact lesson, applied to the codebase that teaches it. The comments in the source even call <code>useChatStream</code> "the thin action shell" around the calculations. The web UI is what created the second caller that made the separation pay.</p>
+</aside>
+
+<p><code>src/shared/</code> ended up holding everything that's logic-without-a-UI: the chunk vocabulary and its SSE parser (<code>chunks.ts</code>), the fold (<code>stream-fold.ts</code>), lesson-filename math like "which lesson number is this, and which is newest" (<code>lesson-names.ts</code>), and — the next section — the catalog of agents. The rule for the directory is one sentence: if it touches <code>node:</code> or <code>process.env</code> or a rendering library, it doesn't belong here.</p>
+
+<h2>One agent quietly becomes three</h2>
+
+<p>A web home screen wants something to <em>show</em>: a grid of tutors, each with a name, a blurb, a course outline. The CLI had exactly one agent, hardcoded. So before the web UI could have a meaningful landing page, the single agent had to become a small, declarative roster. <a href="https://github.com/vishnugopal/acd-tutor/pull/13">PR #13</a> renamed <code>src/agents/main.ts</code> to <code>src/agents/acd-tutor.ts</code> and introduced a catalog.</p>
+
+<p>There was also a product reason for doing this now. I didn't want the browser to prove only that the ACD tutor could wear a nicer coat; I wanted to build a new kind of tutor and see whether the same idea held. An English tutor was the useful counterexample: argumentative essays instead of TypeScript, claims and evidence instead of actions and calculations, Markdown instead of code. If the same harness could carry that lesson plan too, the architecture was teaching-application shaped, not accidentally programming-tutor shaped.</p>
+
+<p>The catalog is, again, pure Layer-0 data — the single source of truth for who the agents are, consumed identically by the console's selection menu and the web's home screen:</p>
+
+<span class="code-label">src/shared/catalog.ts</span>
+<pre><code><span class="kw">export const</span> AGENTS = {
+  <span class="str">"acd-tutor"</span>: {
+    id: <span class="str">"acd-tutor"</span>,
+    label: <span class="str">"ACD Tutor"</span>,
+    description: <span class="str">"Learn to tell apart Actions, Calculations, and Data in real code."</span>,
+    greeting: <span class="str">`Hi! Welcome to ACD tutor! …`</span>,
+    actions: [CHECK_MY_WORK],
+    workspace: { dirEnvVar: <span class="str">"ACD_TUTOR_SCRATCH_DIR"</span>, defaultDir: <span class="str">"/tmp/acd-tutor/scratch"</span>, editor: <span class="str">"code"</span> },
+    course: { title: <span class="str">"Actions · Calculations · Data"</span>, steps: [ <span class="cm">/* 7 steps */</span> ] },
+  },
+  <span class="str">"argumentative-essay-tutor"</span>: { <span class="cm">/* … editor: "markdown" … */</span> },
+  <span class="str">"socratic-tutor"</span>: { <span class="cm">/* … chat-only: no workspace … */</span> },
+} <span class="kw">satisfies</span> Record&lt;AgentId, AgentDefinition&gt;;</code></pre>
+
+<p>An entry carries everything a UI needs to present a tutor without knowing anything about it: the label and blurb for a card, the greeting for the first transcript line, the action buttons (the ACD tutor's "Check my work"), an optional <code>course</code> outline for a progress stepper, and an optional <code>workspace</code> — present only if the tutor manages lesson files. That last field is what the home screen reads to decide which screen to open: a tutor with a <code>workspace</code> gets the IDE layout (editor + chat), a chat-only tutor like the kids' Socratic tutor gets a plain conversation.</p>
+
+<p>The agent's actual <em>behavior</em> still lives where Part 1 put it — in a skill and a Flue profile. The catalog is deliberately separate from the Flue side, because the catalog has to run in the browser and Flue profiles can't. A small filesystem-consistency test asserts that every catalog <code>id</code> has a matching agent stub, profile, and skill on disk, so the two halves can't drift. Here's a profile, for completeness — note how little is left once the catalog holds the presentation:</p>
+
+<span class="code-label">src/agents/profiles/acd-tutor.ts</span>
+<pre><code><span class="kw">export const</span> acdProfile = <span class="fn">defineAgentProfile</span>({
+  instructions: [
+    <span class="str">"You are an Actions, Calculations, and Data tutor…"</span>,
+    <span class="str">"Manage lesson files exclusively with listFiles/readFile/writeFile/openFile…"</span>,
+    <span class="str">"On a fresh start, call listFiles first and resume where the learner left off."</span>,
+  ].<span class="fn">join</span>(<span class="str">"\n"</span>),
+  skills: [acdTutor],
+  tools: <span class="fn">createLessonFileTools</span>({ scratchDir: ACD_SCRATCH_DIR, openMode: OPEN_MODE }),
+});</code></pre>
+
+<p>The dividend showed up one PR later. <a href="https://github.com/vishnugopal/acd-tutor/pull/16">Adding a second real tutor</a> — an argumentative-essay tutor that edits Markdown instead of TypeScript — was a catalog entry, a profile, and a skill. The home screen, the chat hook, the SSE plumbing, the fold: untouched. This is Part 1's thesis — <em>infrastructure changes rarely, knowledge changes constantly</em> — extended from "one tutor's lessons" to "the set of tutors itself."</p>
+
+<h2>The hard part: a filesystem the browser doesn't have</h2>
+
+<p>Everything so far has been pleasant. This is the part that wasn't, and it's the most interesting thing in the whole project.</p>
+
+<p>Part 1's best idea was that <strong>the filesystem is part of the conversation</strong>. The tutor writes <code>lesson-1.ts</code> into a scratch directory and opens it in your real <code>$EDITOR</code>; you edit the file; the tutor reads your edits back as your answer. The terminal UI got this almost for free, because a terminal lives <em>on</em> a machine with an editor and a filesystem.</p>
+
+<p>A browser has neither. There is no <code>$EDITOR</code> to spawn, no path to read. So the file half of the conversation had to be rebuilt — and the design rule was to rebuild it <em>without the agent noticing</em>. The model still calls <code>openFile("lesson-2.ts")</code>. Where that lands is the only thing that changes.</p>
+
+<p>It comes down to one branch in the <code>openFile</code> tool, switched by the <code>TUTOR_OPEN_MODE</code> that <code>web/main.ts</code> set at boot:</p>
+
+<span class="code-label">src/tools.ts</span>
+<pre><code><span class="fn">defineTool</span>({
+  name: <span class="str">"openFile"</span>,
+  <span class="cm">/* …schema: a bare filename… */</span>
+  execute: <span class="kw">async</span> (args) =&gt; {
+    <span class="kw">if</span> ((<span class="kw">await</span> store.<span class="fn">read</span>(args.filename)) === <span class="kw">null</span>) <span class="kw">return</span> FILE_NOT_FOUND;
+    <span class="kw">const</span> name = <span class="fn">basename</span>(args.filename);
+    <span class="kw">if</span> (opts.openMode === <span class="str">"web"</span>) {
+      <span class="cm">// No host editor to spawn: drop a hidden .open-request signal that</span>
+      <span class="cm">// the browser polls for after the reply, and switches to that tab.</span>
+      <span class="kw">await</span> store.<span class="fn">requestOpen</span>(name);
+    } <span class="kw">else</span> {
+      store.<span class="fn">openInEditor</span>(name, opts.editor);  <span class="cm">// console: spawn $EDITOR</span>
+    }
+    <span class="kw">return</span> <span class="str">`Opened ${</span>name<span class="str">} in the learner's editor`</span>;
+  },
+});</code></pre>
+
+<p>This is the prompts-vs-tools boundary from Part 1 paying rent a second time. The skill says "open the file"; the <em>tool</em> decides what "open" means in this environment. In web mode it writes a tiny hidden file, <code>.open-request</code>, into the same scratch directory. The whole contract is four lines:</p>
+
+<span class="code-label">src/open-request.ts</span>
+<pre><code><span class="cm">// The web-mode handshake: openFile drops this; the client consumes it after</span>
+<span class="cm">// each reply and opens that tab. Dotfiles are hidden from every lesson</span>
+<span class="cm">// listing, so neither the model nor the student ever sees it.</span>
+<span class="kw">export const</span> OPEN_REQUEST_FILE = <span class="str">".open-request"</span>;
+<span class="kw">export interface</span> OpenRequest { filename: string; requestedAt: number; }</code></pre>
+
+<p>The other direction — the learner's edits reaching the agent — is solved by making the browser editor and the agent share <em>one workspace</em>. The agent's <code>writeFile</code> tool and the browser's autosave (a debounced <code>PUT /api/agents/:agent/files/:name</code>) write to the same lesson-file store. The agent's <code>readFile</code> reads what the editor saved. The store doesn't know or care which side touched a file; it's the workspace box at the bottom of the stack diagram, now with two writers instead of one.</p>
+
+<figure class="diagram">
+  <!-- image file: images/file-bridge.svg -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 392" role="img" aria-label="The file bridge. On the left, the web editor in the browser (CodeMirror or MDXEditor). On the right, the agent's lesson-file tools running in the Flue server. At the bottom center, a single shared workspace holding lesson files and a hidden .open-request signal. The editor autosaves edits down into the workspace; the agent's writeFile writes lessons down into it; the agent's openFile drops the .open-request signal; and after each reply the browser reads the file list and signal back up to decide which tab to show." font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <defs>
+      <marker id="g2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b7a4b"/>
+      </marker>
+      <marker id="p2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#d23669"/>
+      </marker>
+      <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b6ec7"/>
+      </marker>
+    </defs>
+
+    <!-- browser -->
+    <rect x="20" y="20" width="270" height="104" rx="12" fill="#fdf7f9" stroke="#d23669" stroke-width="2"/>
+    <text x="155" y="46" font-size="10" font-weight="700" letter-spacing="1.2" fill="#d23669" text-anchor="middle">WEB EDITOR · browser</text>
+    <text x="155" y="70" font-size="12" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">CodeMirror / MDXEditor</text>
+    <text x="155" y="92" font-size="10.5" fill="#6b6b6b" text-anchor="middle">autosave · planSync after each reply</text>
+
+    <!-- agent -->
+    <rect x="390" y="20" width="270" height="104" rx="12" fill="#fbfaf8" stroke="#b8b2a7" stroke-width="1.5"/>
+    <text x="525" y="46" font-size="10" font-weight="700" letter-spacing="1.2" fill="#6b6b6b" text-anchor="middle">AGENT · Flue tools</text>
+    <text x="525" y="70" font-size="12" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">writeFile · openFile · readFile</text>
+    <text x="525" y="92" font-size="10.5" fill="#6b6b6b" text-anchor="middle">addresses files by bare name</text>
+
+    <!-- workspace -->
+    <rect x="190" y="278" width="300" height="96" rx="12" fill="#faf9f6" stroke="#7d7669" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="340" y="304" font-size="10" font-weight="800" letter-spacing="1.3" fill="#7d7669" text-anchor="middle">ONE SHARED WORKSPACE</text>
+    <text x="340" y="328" font-size="11.5" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#ad2955" text-anchor="middle">lesson-1.ts · lesson-2.ts · …</text>
+    <text x="340" y="350" font-size="11" font-family="ui-monospace, 'SF Mono', Menlo, monospace" fill="#9b958c" text-anchor="middle">.open-request (hidden)</text>
+
+    <!-- autosave: browser -> workspace (green write) -->
+    <path d="M 150 124 C 150 210, 215 220, 245 276" fill="none" stroke="#2b7a4b" stroke-width="2" marker-end="url(#g2)"/>
+    <text x="120" y="200" font-size="10.5" fill="#2b7a4b" text-anchor="middle">autosave →</text>
+    <text x="120" y="216" font-size="10.5" fill="#2b7a4b" text-anchor="middle">PUT /files</text>
+
+    <!-- writeFile + openFile: agent -> workspace -->
+    <path d="M 530 124 C 530 210, 470 222, 440 276" fill="none" stroke="#2b7a4b" stroke-width="2" marker-end="url(#g2)"/>
+    <text x="566" y="196" font-size="10.5" fill="#2b7a4b" text-anchor="middle">writeFile</text>
+    <path d="M 480 124 C 470 196, 430 230, 400 276" fill="none" stroke="#d23669" stroke-width="2" marker-end="url(#p2)"/>
+    <text x="436" y="170" font-size="10.5" fill="#d23669" text-anchor="middle">openFile →</text>
+    <text x="436" y="185" font-size="10.5" fill="#d23669" text-anchor="middle">.open-request</text>
+
+    <!-- read back: workspace -> browser (blue) -->
+    <path d="M 215 278 C 150 235, 150 200, 175 126" fill="none" stroke="#3b6ec7" stroke-width="2" marker-end="url(#b2)"/>
+    <text x="246" y="250" font-size="10.5" fill="#3b6ec7" text-anchor="middle">GET files +</text>
+    <text x="246" y="266" font-size="10.5" fill="#3b6ec7" text-anchor="middle">open-request</text>
+  </svg>
+  <figcaption>The agent writes and signals; the browser autosaves and reads back. Same workspace, two writers — exactly the role the learner's editor played in Part 1.</figcaption>
+</figure>
+
+<p>The piece that ties it together is what the browser does after each reply. The agent may have created a new lesson, rewritten the current one, or asked to open a specific file — and the learner may be mid-edit with unsaved work. Deciding what the editor should do is, once again, a pure calculation, kept out of the React component that runs it:</p>
+
+<span class="code-label">src/web/client/hooks/useLessonFileSync.ts</span>
+<pre><code><span class="cm">// open-request wins → first file → newer-and-clean → tutor-rewrote-current</span>
+<span class="kw">export function</span> <span class="fn">planSync</span>({ files, openRequest, active, dirty }: SyncInput): SyncPlan {
+  <span class="cm">// The tutor's openFile call wins: open exactly that file.</span>
+  <span class="kw">if</span> (openRequest &amp;&amp; files.<span class="fn">includes</span>(openRequest) &amp;&amp; openRequest !== active)
+    <span class="kw">return</span> { kind: <span class="str">"open"</span>, file: openRequest, toast: <span class="str">`📂 Beep opened ${</span>openRequest<span class="str">}`</span> };
+
+  <span class="kw">const</span> newest = <span class="fn">latestLessonFile</span>(files);
+  <span class="kw">if</span> (!newest) <span class="kw">return</span> { kind: <span class="str">"none"</span> };
+  <span class="kw">if</span> (active === <span class="kw">null</span>)                                  <span class="cm">// first file appeared — open it</span>
+    <span class="kw">return</span> { kind: <span class="str">"open"</span>, file: newest, toast: <span class="str">`📂 ${</span>newest<span class="str">} is ready!`</span> };
+
+  <span class="kw">const</span> newer = newest !== active &amp;&amp;
+    (<span class="fn">lessonNumber</span>(newest) ?? <span class="str">0</span>) &gt; (<span class="fn">lessonNumber</span>(active) ?? <span class="str">0</span>);
+  <span class="kw">if</span> (newer)                                          <span class="cm">// don't yank unsaved work</span>
+    <span class="kw">return</span> dirty ? { kind: <span class="str">"toast"</span>, toast: <span class="str">`📂 New lesson ready`</span> }
+                 : { kind: <span class="str">"open"</span>, file: newest, toast: <span class="str">`📂 ${</span>newest<span class="str">} unlocked!`</span> };
+
+  <span class="kw">return</span> dirty ? { kind: <span class="str">"none"</span> } : { kind: <span class="str">"refresh"</span>, file: active };
+}</code></pre>
+
+<p>The most human line in the function is the <code>dirty</code> guard: if a new lesson unlocks while you're typing, the editor doesn't rip your file away — it shows a toast and waits. That kind of rule is exactly what you want isolated in a pure, testable function rather than tangled in effects. In the terminal version, your own editor enforced this for free; on the web, it's a deliberate calculation. The trade-off is the honest cost of leaving the host: conveniences the OS gave you become code you own.</p>
+
+<h2>Conversation state, the second time</h2>
+
+<p>Part 1 made a point of how little state the CLI managed: the instance id <em>is</em> the conversation, and Flue keeps the history server-side. The web inherits that — the browser stores only a conversation id in <code>localStorage</code>, never the transcript — but a reload needs to repaint the conversation, and that surfaced a subtle bug worth the telling.</p>
+
+<p>The server snapshots history off Flue's <code>agent_end</code> event. The naive implementation stored that payload as the conversation. It was <a href="https://github.com/vishnugopal/acd-tutor/pull/18">wrong</a>: <code>agent_end</code> carries only the messages from <em>that run</em> — the latest prompt and reply — not the whole conversation. Storing it overwrote the entire transcript on every turn. The fix is to accumulate:</p>
+
+<span class="code-label">src/web/history.ts</span>
+<pre><code><span class="cm">// Each agent_end reports only the new messages from that run, so history is</span>
+<span class="cm">// built by accumulating turns — not overwriting. An empty turn (Flue's</span>
+<span class="cm">// error/abort path) leaves the transcript alone, so a dropped stream never</span>
+<span class="cm">// wipes history.</span>
+<span class="kw">export function</span> <span class="fn">appendTurn</span>(existing: TranscriptMessage[], messages: unknown[]) {
+  <span class="kw">const</span> turn = <span class="fn">toTranscript</span>(messages);
+  <span class="kw">return</span> turn.length === <span class="str">0</span> ? existing : [...existing, ...turn];
+}</code></pre>
+
+<p>It's a small fix, but it's the kind of bug you only meet once you have a UI that reloads — the terminal never reloads, so the terminal never hit it. New front-end, new failure modes; the seam held, but the consumer above it had its own state to get right.</p>
+
+<h2>The papercuts worth keeping</h2>
+
+<p>Two smaller threads round out the picture.</p>
+
+<p><strong>A typing indicator that tells the truth.</strong> The first cut showed the "thinking…" indicator only while waiting for the very first chunk. But the tutor pauses mid-reply to call tools — read your file, open another — and during those pauses the indicator vanished and reappeared, which reads as "frozen, then alive, then frozen." <a href="https://github.com/vishnugopal/acd-tutor/pull/21">The fix</a> shows it for the whole reply, not just the lead-in: a reply is "in flight" until the stream ends, tool pauses included. The same PR made <code>/debug</code> mode announce itself in the transcript instead of toggling silently — both are the agent-loop observability from Part 1, polished for a UI where you can't see the terminal scroll. (The terminal got its own animated spinner back in <a href="https://github.com/vishnugopal/acd-tutor/pull/11">PR #11</a>.)</p>
+
+<p><strong>When your dependency has the bug.</strong> Flue is young, and at one point reading a skill's bundled reference files started failing. The cause was a path-encoding mismatch inside Flue's packaged-skill reader — a colon arriving URL-encoded as <code>%3A</code> never matched the raw path it was compared against. Rather than wait, <a href="https://github.com/vishnugopal/acd-tutor/pull/17">PR #17</a> pinned Flue to an exact version and shipped a <code>bun patch</code>:</p>
+
+<span class="code-label">patches/@flue%2Fruntime@0.9.2.patch</span>
+<pre><code>  <span class="kw">function</span> <span class="fn">readPackagedSkillFile</span>(skills, path) {
++   <span class="kw">let</span> decodedPath = path;
++   <span class="kw">try</span> { decodedPath = <span class="fn">decodeURIComponent</span>(path); } <span class="kw">catch</span> {}
+    <span class="kw">for</span> (<span class="kw">const</span> skill <span class="kw">of</span> ...) <span class="kw">for</span> (<span class="kw">const</span> [filePath, file] <span class="kw">of</span> ...) {
++     <span class="kw">const</span> encoded = <span class="fn">packagedSkillReadPath</span>(skill.id, filePath);
++     <span class="kw">const</span> raw = <span class="str">`${</span>PACKAGED_SKILLS_ROOT<span class="str">}${</span>skill.id<span class="str">}/${</span>filePath<span class="str">}`</span>;
+-     <span class="kw">if</span> (path !== <span class="fn">packagedSkillReadPath</span>(skill.id, filePath)) <span class="kw">continue</span>;
++     <span class="kw">if</span> (path !== encoded &amp;&amp; path !== raw &amp;&amp; decodedPath !== encoded &amp;&amp; decodedPath !== raw) <span class="kw">continue</span>;
+      <span class="kw">return</span> ...;
+    }
+  }</code></pre>
+
+<p>This is the unglamorous reality of building on a fast-moving harness, and it's worth showing precisely because the rest of the post makes Flue look frictionless. Pinning the version means the patch can't silently drift out from under you on the next install. It's a calculated bet: you trade automatic upgrades for a reproducible build today.</p>
+
+<h2>Testing two UIs without a model</h2>
+
+<p>One last dividend of the seam. Because every UI consumes an <code>AsyncIterable&lt;AgentChunk&gt;</code>, you can test the whole stack — fold, file-sync, SSE, the lot — by feeding it <em>canned chunks</em> instead of a live model. <a href="https://github.com/vishnugopal/acd-tutor/pull/12">PR #12</a> built a "faux agent": a scripted Flue agent, isolated in its own Flue project so it never touches the production build, that replays pre-baked events (a greeting, a <code>writeFile</code>, an <code>openFile</code>) on demand.</p>
+
+<p>The e2e version is built with <code>@earendil-works/pi-ai</code>, which matters because the test does <em>not</em> mock the web server or the lesson-file tools. It registers a fake provider/model pair, points a normal Flue agent at that model, and gives the agent the real <code>writeFile</code>/<code>openFile</code> tools. The scripted model then takes three assistant turns: write <code>lesson-1.ts</code>, request that the browser open it, and stream the final tutor message.</p>
+
+<span class="code-label">test/support/faux-tutor.ts</span>
+<pre><code><span class="kw">const</span> faux = <span class="fn">registerFauxProvider</span>({
+  api: <span class="str">"acd-faux"</span>,
+  provider: <span class="str">"acd-faux"</span>,
+  models: [{ id: <span class="str">"tutor"</span> }],
+});
+
+<span class="kw">const</span> fauxApi = <span class="fn">getApiProvider</span>(<span class="str">"acd-faux"</span>);
+<span class="kw">if</span> (fauxApi) <span class="fn">registerApiProvider</span>(fauxApi);
+<span class="fn">registerProvider</span>(<span class="str">"acd-faux"</span>, { api: <span class="str">"acd-faux"</span>, baseUrl: <span class="str">""</span> });
+
+faux.<span class="fn">setResponses</span>([
+  <span class="fn">fauxAssistantMessage</span>(<span class="fn">fauxToolCall</span>(<span class="str">"writeFile"</span>, { filename: <span class="str">"lesson-1.ts"</span>, content: <span class="str">"// Lesson 1..."</span> })),
+  <span class="fn">fauxAssistantMessage</span>(<span class="fn">fauxToolCall</span>(<span class="str">"openFile"</span>, { filename: <span class="str">"lesson-1.ts"</span> })),
+  <span class="fn">fauxAssistantMessage</span>(<span class="fn">fauxText</span>(<span class="str">"Created your first lesson..."</span>)),
+]);</code></pre>
+
+<p>The odd-looking re-registration is the honest detail. The test bundle and <code>@flue/runtime</code> can resolve <code>pi-ai</code> as separate module instances, so registering the faux provider in the test bundle's registry is not enough. The helper lifts the handler back out with <code>getApiProvider</code>, re-registers it through Flue's <code>registerApiProvider</code>, and then calls <code>registerProvider</code> so <code>acd-faux/tutor</code> resolves like any other model. From the rest of the stack's point of view, this is just an agent streaming from a provider.</p>
+
+<p>At the smaller unit-test level, tiny builders keep the fixtures to just the fields the code reads:</p>
+
+<span class="code-label">test/fixtures/faux-events.ts</span>
+<pre><code><span class="kw">export function</span> <span class="fn">textDelta</span>(text: string): FlueEvent { <span class="kw">return</span> { type: <span class="str">"text_delta"</span>, text }; }
+
+<span class="kw">export function</span> <span class="fn">toolCall</span>(opts): FlueEvent {
+  <span class="kw">return</span> { type: <span class="str">"tool_call"</span>, toolName: opts.toolName, toolCallId: <span class="str">"tc_1"</span>,
+           isError: opts.isError ?? <span class="kw">false</span>, result: opts.result, durationMs: opts.durationMs ?? <span class="str">5</span> };
+}</code></pre>
+
+<p>An end-to-end test can now drive a real agent session against the faux agent and assert that the browser renders the right transcript and opens the right tab — deterministically, offline, with no API key and no flakiness. The abstraction that let one backend feed two UIs is the same abstraction that lets a test stand in for the backend entirely. Good seams are good in more than one direction.</p>
+
+<h2>So — was it a weekend?</h2>
+
+<p>The rendering swap was. Pointing a browser at the agent took an SSE adapter on the server, an async generator on the client, and a React tree — and not one line of the agent, the runner, the tools, or the loop moved to make it happen. Part 1's bet that "a browser frontend would reuse layers 1–3 untouched" paid off exactly as advertised.</p>
+
+<p>But the more honest accounting is that the web UI was a <em>forcing function</em>. It's the second caller that turns "code that happens to work" into "an abstraction." A single consumer can hide a lot: logic tangled into the console's send loop looked fine until a browser needed the same logic and the only clean answer was to lift <code>foldChunk</code> into a pure, shared, tested calculation. One hardcoded agent looked fine until a home screen needed a roster and the answer was a declarative catalog. The filesystem-as-conversation looked free until a browser had no filesystem and the answer was an explicit signal file and a sync plan.</p>
+
+<p>That's the real lesson, and it generalizes past tutors and past Flue: <strong>you don't truly know where your seams are until something pulls on them from a new direction.</strong> The terminal proved the agent worked. The browser proved the architecture did. Build the second front-end not only because you want it, but because it's the cheapest way to find out whether the first one was honest.</p>
+
+<p>The full source — every commit referenced in this post — is at <a href="https://github.com/vishnugopal/acd-tutor/">github.com/vishnugopal/acd-tutor</a>. The web UI is the one consumer; the terminal from <a href="part-1-fundamentals.html">Part 1</a> is the other; the seam between them is twelve lines of type declaration. There's room for a third — a mobile client, a voice loop, a Slack bot — and if the abstraction is as honest as it now looks, none of them should have to touch anything below <code>send()</code>.</p>
+
+<footer class="site">
+<p><em>One Agent, Two Front-Ends.</em> Part 2 of a series on building a CLI agent with Flue. The code is a real, running project — every snippet above is from its git history.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
