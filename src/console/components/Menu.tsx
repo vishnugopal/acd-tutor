@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
-import type { AgentChoice } from "./types";
+import type { AgentChoice } from "../types";
 
 export interface MenuProps {
   /** The selectable agents (≥1). */

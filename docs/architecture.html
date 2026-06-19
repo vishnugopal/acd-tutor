@@ -581,22 +581,22 @@ const NODES = [
     notes: [],
     tests: ["test/console/actions.test.ts"] },
 
-  { id: "console-app", label: "console/App.tsx", sub: "slash commands + layout", path: "src/console/App.tsx",
+  { id: "console-app", label: "components/App.tsx", sub: "slash commands + layout", path: "src/console/components/App.tsx",
     worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui", "streaming"], x: 625, y: 340,
     summary: "After Phase 3 this is dispatch and layout only: /exit and /debug act immediately; everything else queues through useChatStream. The transport loop no longer lives in the component.",
     points: ["The old no-op AgentChunk→ReplyChunk converter is deleted — both are the shared type now"],
     notes: [],
-    tests: ["test/console/App.test.tsx — greeting, streaming, /debug toggle, FIFO queue, error render"] },
+    tests: ["test/console/components/App.test.tsx — greeting, streaming, /debug toggle, FIFO queue, error render"] },
 
-  { id: "use-chat-stream", label: "console/useChatStream.ts", sub: "send loop over the shared fold", path: "src/console/useChatStream.ts",
+  { id: "use-chat-stream", label: "hooks/useChatStream.ts", sub: "send loop over the shared fold", path: "src/console/hooks/useChatStream.ts",
     worlds: ["host"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 625, y: 450,
-    summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (shared/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line, error render, and the post-reply callback used to refresh workbook buttons.",
+    summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (agents/io/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line, error render, and the post-reply callback used to refresh workbook buttons.",
     points: [
       "debugMode is read through a ref so /debug applies mid-reply",
       "onReplyDone lets the runner refresh workspace-driven actions after each turn",
     ],
     notes: [],
-    tests: ["Fold covered in test/agents/io/stream-fold.test.ts; hook exercised via test/console/App.test.tsx"] },
+    tests: ["Fold covered in test/agents/io/stream-fold.test.ts; hook exercised via test/console/components/App.test.tsx"] },
 
   { id: "console-types", label: "console/types.ts", sub: "aliases of shared types", path: "src/console/types.ts",
     worlds: ["host"], kind: "data (types)", concerns: ["identity", "chat-ui"], x: 810, y: 120,
@@ -605,12 +605,12 @@ const NODES = [
     notes: ["Nothing outside src/console should import this anymore — the shared layer is the source. (The old web/server.ts import is gone.)"],
     tests: ["Type-level only; guarded by tsc"] },
 
-  { id: "console-widgets", label: "console/{InputBar,Transcript,…}", sub: "Ink widgets", path: "src/console/*.tsx",
+  { id: "console-widgets", label: "components/{InputBar,Transcript,…}", sub: "Ink widgets", path: "src/console/components/*.tsx",
     worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui"], x: 810, y: 340,
     summary: "The Ink rendering kit: input with word-jump editing, transcript with markdown, menu, spinner.",
     points: ["TextInput exposes wordStart/wordEnd via __test__"],
     notes: [],
-    tests: ["test/console/TextInput.test.ts; InputBar/Transcript/Menu untested (Phase 5 debt, deliberate)"],
+    tests: ["test/console/components/TextInput.test.ts; InputBar/Transcript/Menu untested (Phase 5 debt, deliberate)"],
     files: ["InputBar.tsx", "Transcript.tsx", "Menu.tsx", "Markdown.tsx", "TextInput.tsx", "Spinner.tsx"] },
 
   /* ---------------- host: web server ---------------- */
@@ -696,7 +696,7 @@ const NODES = [
 
   { id: "use-agent-chat", label: "hooks/useAgentChat.ts", sub: "conversation over the web API", path: "src/web/client/hooks/useAgentChat.ts",
     worlds: ["browser"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 1280, y: 540,
-    summary: "The browser counterpart of the console send loop: chunks fold through shared/stream-fold.ts into the streaming bubble and transcript, plus conversation resume. Conversation id persists in localStorage (lib/storage.ts); the transcript itself is always re-fetched from the server.",
+    summary: "The browser counterpart of the console send loop: chunks fold through agents/io/stream-fold.ts into the streaming bubble and transcript, plus conversation resume. Conversation id persists in localStorage (lib/storage.ts); the transcript itself is always re-fetched from the server.",
     points: [
       "Owns the debug-mode toggle (web counterpart of /debug) — state + ref read mid-stream, so toggling applies to the reply in flight",
       "AbortController per send; aborted on unmount so navigating away cancels the in-flight fetch",

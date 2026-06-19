@@ -3,8 +3,8 @@ import {
   finishStream,
   foldChunk,
   initialStreamState,
-} from "../agents/io/stream-fold";
-import type { Message, ReplyChunk } from "./types";
+} from "../../agents/io/stream-fold";
+import type { Message, ReplyChunk } from "../types";
 
 /**
  * The send loop behind the console chat, split per the project style:

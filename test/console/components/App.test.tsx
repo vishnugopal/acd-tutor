@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { render } from "ink-testing-library";
 import React from "react";
-import { App, type AppProps } from "../../src/console/App";
-import type { ReplyChunk } from "../../src/console/types";
+import { App, type AppProps } from "../../../src/console/components/App";
+import type { ReplyChunk } from "../../../src/console/types";
 
 const ENTER = "\r";
 
