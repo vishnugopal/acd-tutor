@@ -19,6 +19,13 @@ export interface ConsoleOptions {
   agents: AgentChoice[];
   /** Builds the reply source for the chosen agent's id. */
   createReply: (id: string) => (line: string) => AsyncIterable<ReplyChunk>;
+  /**
+   * Resolves the current action buttons for the chosen agent.
+   * Workbook agents can return Start while their workspace is empty.
+   */
+  resolveActions?: (
+    agent: AgentChoice,
+  ) => Promise<ConsoleAction[]> | ConsoleAction[];
   /** Shown when a reply yields no text. */
   emptyReplyMessage?: string;
   /** Indicator shown while waiting for the first reply chunk. */

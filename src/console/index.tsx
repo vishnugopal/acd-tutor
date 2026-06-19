@@ -1,12 +1,13 @@
 import { render } from "ink";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { App } from "./App";
 import { Menu } from "./Menu";
-import type { AgentChoice, ConsoleOptions } from "./types";
+import type { AgentChoice, ConsoleAction, ConsoleOptions } from "./types";
 
 export type { AgentChoice, ConsoleAction, ConsoleOptions, ReplyChunk } from "./types";
 
 interface RootProps extends Required<Pick<ConsoleOptions, "agents" | "createReply">> {
+  resolveActions?: ConsoleOptions["resolveActions"];
   emptyReplyMessage: string;
   thinkingIndicator: string;
   formatError: (err: unknown) => string;
@@ -22,6 +23,7 @@ interface RootProps extends Required<Pick<ConsoleOptions, "agents" | "createRepl
 function Root({
   agents,
   createReply,
+  resolveActions,
   emptyReplyMessage,
   thinkingIndicator,
   formatError,
@@ -30,11 +32,36 @@ function Root({
   const [selected, setSelected] = useState<AgentChoice | null>(
     agents.length === 1 ? agents[0]! : null,
   );
+  const [actionRevision, setActionRevision] = useState(0);
+  const [actions, setActions] = useState<ConsoleAction[]>(
+    () => selected?.actions ?? [],
+  );
 
   const choose = (choice: AgentChoice) => {
     onSelect(choice);
     setSelected(choice);
+    setActions(choice.actions ?? []);
   };
+
+  useEffect(() => {
+    if (selected === null) return;
+    let cancelled = false;
+    const fallback = selected.actions ?? [];
+    setActions(fallback);
+    if (resolveActions === undefined) return;
+
+    void Promise.resolve(resolveActions(selected))
+      .then((next) => {
+        if (!cancelled) setActions(next);
+      })
+      .catch(() => {
+        if (!cancelled) setActions(fallback);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, resolveActions, actionRevision]);
 
   // agents.length === 1 auto-selects above, so this also runs onSelect once.
   if (selected === null) {
@@ -45,7 +72,12 @@ function Root({
     <App
       reply={createReply(selected.id)}
       greeting={selected.greeting}
-      actions={selected.actions ?? []}
+      actions={actions}
+      onReplyDone={
+        resolveActions === undefined
+          ? undefined
+          : () => setActionRevision((n) => n + 1)
+      }
       emptyReplyMessage={emptyReplyMessage}
       thinkingIndicator={thinkingIndicator}
       formatError={formatError}
@@ -76,6 +108,7 @@ export async function runConsole(options: ConsoleOptions): Promise<void> {
     <Root
       agents={agents}
       createReply={createReply}
+      resolveActions={options.resolveActions}
       emptyReplyMessage={emptyReplyMessage}
       thinkingIndicator={thinkingIndicator}
       formatError={formatError}

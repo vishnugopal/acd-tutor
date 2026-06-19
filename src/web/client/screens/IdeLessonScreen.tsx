@@ -16,6 +16,7 @@ import { useLessonFileSync } from "../hooks/useLessonFileSync";
 import { useToast } from "../hooks/useToast";
 import type { SaveState } from "../lib/autosave";
 import type { AgentInfo } from "../types";
+import { lessonChatActions } from "../../../shared/lesson-actions";
 
 const SAVE_LABEL: Record<SaveState, string> = {
   idle: "",
@@ -118,6 +119,7 @@ export function IdeLessonScreen({
 
   const mood = chat.isBusy ? "think" : "idle";
   const hasWorkspace = files.length > 0;
+  const actions = lessonChatActions(files, agent.actions);
 
   return (
     // Desktop: lock the screen to the viewport so the chat dock keeps a fixed
@@ -205,7 +207,7 @@ export function IdeLessonScreen({
             messages={chat.messages}
             streamingText={chat.streamingText}
             onSend={chat.send}
-            actions={agent.actions}
+            actions={actions}
             onAction={(action) => chat.send(action.message, action.label)}
             placeholder="Ask Beep about the code…"
           />
