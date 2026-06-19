@@ -1,8 +1,8 @@
 import type { FlueClient } from "@flue/sdk";
-import { createAgentSession, type AgentChunk, type AgentSession } from "../agent-io";
-import type { AgentPresentation } from "../shared/catalog";
-import type { StreamFrame } from "../shared/chunks";
-import { createLessonFileStore, type LessonFileStore } from "../lesson-files";
+import { createAgentSession, type AgentChunk, type AgentSession } from "../agents/io/agent-io";
+import type { AgentPresentation } from "../agents/catalog/catalog";
+import type { StreamFrame } from "../agents/types/chunks";
+import { createLessonFileStore, type LessonFileStore } from "../shared/lesson-files";
 import { appendTurn, type TranscriptMessage } from "./history";
 import indexPage from "./client/index.html";
 

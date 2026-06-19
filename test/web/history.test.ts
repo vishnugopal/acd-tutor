@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { appendTurn, toTranscript } from "../src/web/history";
+import { appendTurn, toTranscript } from "../../src/web/history";
 
 /** Shapes mirror Flue's agent_end `messages` payload (normalized LlmMessages). */
 const text = (t: string) => ({ type: "text", text: t });

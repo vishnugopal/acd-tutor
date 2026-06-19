@@ -1,5 +1,5 @@
-import type { AgentAction, AgentPresentation } from "../../shared/catalog";
-import type { AgentChunk } from "../../shared/chunks";
+import type { AgentAction, AgentPresentation } from "../../agents/catalog/catalog";
+import type { AgentChunk } from "../../agents/types/chunks";
 
 export type { AgentAction };
 

@@ -3,7 +3,7 @@ import type { ToolDefinition } from "@flue/runtime";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLessonFileTools } from "../src/tools";
+import { createLessonFileTools } from "../../../src/agents/io/tools";
 
 /** Looks up a tool's execute() by name from the factory output. */
 function tool(tools: ToolDefinition[], name: string) {

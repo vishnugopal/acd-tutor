@@ -3,7 +3,7 @@ import {
   finishStream,
   foldChunk,
   initialStreamState,
-} from "../../src/shared/stream-fold";
+} from "../../../src/agents/io/stream-fold";
 
 describe("foldChunk", () => {
   test("text chunks accumulate without touching the transcript", () => {

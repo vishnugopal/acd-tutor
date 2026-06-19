@@ -1,6 +1,6 @@
 import { defineTool, type ToolDefinition } from "@flue/runtime";
 import { basename } from "node:path";
-import { createLessonFileStore } from "./lesson-files";
+import { createLessonFileStore } from "../../shared/lesson-files";
 
 /**
  * Sentinels are the model's prompt contract — the SKILL.md instructions
@@ -29,7 +29,7 @@ export interface LessonFileToolOptions {
 
 /**
  * Model-callable tools for managing lesson files — a thin sentinel adapter
- * over the shared LessonFileStore (src/lesson-files.ts). The agent addresses
+ * over the shared LessonFileStore (src/shared/lesson-files.ts). The agent addresses
  * files by bare filename (e.g. "lesson-1.ts"); where they live and which
  * editor opens them is host configuration the model never sees. Tool handlers
  * run in the host server process, not the sandbox.

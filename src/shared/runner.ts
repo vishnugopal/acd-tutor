@@ -27,7 +27,7 @@ export async function startFlueServer(
 ): Promise<FlueServer> {
   const {
     port = 3789,
-    projectRoot = `${import.meta.dir}/..`,
+    projectRoot = `${import.meta.dir}/../..`,
     readyTimeoutMs = 10_000,
     skipBuild = false,
   } = options;

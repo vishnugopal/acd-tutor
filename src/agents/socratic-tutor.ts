@@ -4,7 +4,7 @@ import { socraticProfile } from "./profiles/socratic-tutor";
 
 /**
  * Exporting this middleware opts the agent into the HTTP transport at
- * POST /agents/socratic-tutor/:id (used by the CLI in src/main.ts via @flue/sdk).
+ * POST /agents/socratic-tutor/:id (used by the console entry via @flue/sdk).
  */
 export const route: AgentRouteHandler = (_c, next) => next();
 

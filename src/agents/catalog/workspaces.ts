@@ -2,7 +2,7 @@ import {
   AGENTS,
   type AgentDefinition,
   type AgentId,
-} from "./shared/catalog";
+} from "./catalog";
 
 /**
  * Host-side workspace resolution shared by agent profiles (bundled into the

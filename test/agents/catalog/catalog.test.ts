@@ -8,9 +8,9 @@ import {
   isAgentId,
   toPresentation,
   type AgentId,
-} from "../../src/shared/catalog";
+} from "../../../src/agents/catalog/catalog";
 
-const SRC = join(import.meta.dir, "..", "..", "src");
+const SRC = join(import.meta.dir, "..", "..", "..", "src");
 const catalogIds = (Object.keys(AGENTS) as AgentId[]).sort();
 
 describe("catalog calculations", () => {

@@ -3,7 +3,7 @@ import {
   finishStream,
   foldChunk,
   initialStreamState,
-} from "../shared/stream-fold";
+} from "../agents/io/stream-fold";
 import type { Message, ReplyChunk } from "./types";
 
 /**

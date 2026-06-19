@@ -1,6 +1,6 @@
 import { createAgent, type AgentRouteHandler } from "@flue/runtime";
 import { local } from "@flue/runtime/node";
-import { createLessonFileTools } from "../../../src/tools";
+import { createLessonFileTools } from "../../../src/agents/io/tools";
 import { registerFauxTutorProvider } from "../../support/faux-tutor";
 
 /**

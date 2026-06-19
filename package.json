@@ -25,12 +25,12 @@
     "ink-testing-library": "^4.0.0"
   },
   "name": "acd-tutor",
-  "module": "src/main.ts",
+  "module": "src/web/main.ts",
   "scripts": {
     "setup": "bun scripts/setup-memory.ts",
     "debug": "bunx --bun flue connect acd-tutor local",
     "start": "bun src/web/main.ts",
-    "start:console": "bun src/main.ts",
+    "start:console": "bun src/console/main.ts",
     "test": "bun test",
     "test:e2e": "RUN_E2E=1 bun test test/e2e"
   },

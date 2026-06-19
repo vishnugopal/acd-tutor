@@ -3,7 +3,7 @@ import {
   finishStream,
   foldChunk,
   initialStreamState,
-} from "../../../shared/stream-fold";
+} from "../../../agents/io/stream-fold";
 import { createSession, fetchHistory, streamReply } from "../api";
 import {
   clearConversationId,

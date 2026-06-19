@@ -1,5 +1,5 @@
-import type { AgentAction, AgentPresentation } from "../shared/catalog";
-import type { AgentChunk } from "../shared/chunks";
+import type { AgentAction, AgentPresentation } from "../agents/catalog/catalog";
+import type { AgentChunk } from "../agents/types/chunks";
 
 /** A persistent button rendered above the input line; pressing it sends `message`. */
 export type ConsoleAction = AgentAction;

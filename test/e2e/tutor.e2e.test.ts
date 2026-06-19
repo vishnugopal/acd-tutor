@@ -3,7 +3,7 @@ import { createFlueClient } from "@flue/sdk";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAgentSession, type AgentChunk } from "../../src/agent-io";
+import { createAgentSession, type AgentChunk } from "../../src/agents/io/agent-io";
 
 /**
  * Full-stack run against a real Flue server using the dedicated `tutor-faux`
