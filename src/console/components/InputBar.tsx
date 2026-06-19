@@ -2,7 +2,7 @@ import { Box, Text, useFocus, useFocusManager, useInput } from "ink";
 import { useState } from "react";
 import { Spinner } from "./Spinner";
 import { TextInput } from "./TextInput";
-import type { ConsoleAction } from "./types";
+import type { ConsoleAction } from "../types";
 
 const PROMPT_INPUT_ID = "prompt-input";
 

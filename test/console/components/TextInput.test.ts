@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { __test__ } from "../../src/console/TextInput";
+import { __test__ } from "../../../src/console/components/TextInput";
 
 const { wordStart, wordEnd } = __test__!;
 
