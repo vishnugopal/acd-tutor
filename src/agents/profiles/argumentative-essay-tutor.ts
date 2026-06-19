@@ -1,14 +1,14 @@
 import { defineAgentProfile } from "@flue/runtime";
 import essayTutor from "../../skills/argumentative-essay-tutor/SKILL.md" with { type: "skill" };
-import { createLessonFileTools } from "../../tools";
-import { ESSAY_SCRATCH_DIR, OPEN_MODE } from "../../workspaces";
+import { createLessonFileTools } from "../io/tools";
+import { ESSAY_SCRATCH_DIR, OPEN_MODE } from "../catalog/workspaces";
 
 /**
  * Everything the essay tutor agent is, minus the model: instructions, the
  * argumentative-essay skill, and the lesson-file tools (Markdown workbook
  * files). The agent file (src/agents/argumentative-essay-tutor.ts) binds the
  * model and sandbox. Workspace location + openFile behavior come from
- * src/workspaces.ts (ESSAY_TUTOR_SCRATCH_DIR / TUTOR_OPEN_MODE).
+ * src/shared/workspaces.ts (ESSAY_TUTOR_SCRATCH_DIR / TUTOR_OPEN_MODE).
  */
 export const essayProfile = defineAgentProfile({
   instructions: [

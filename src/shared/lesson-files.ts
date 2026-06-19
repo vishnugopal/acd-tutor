@@ -2,11 +2,11 @@ import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { OPEN_REQUEST_FILE, type OpenRequest } from "./open-request";
-import { isHiddenFile } from "./shared/lesson-names";
+import { isHiddenFile } from "./lesson-names";
 
 /**
  * The one lesson-file implementation over a scratch dir, shared by the
- * agent's tools (src/tools.ts, which adapts results to the model's sentinel
+ * agent's tools (src/shared/tools.ts, which adapts results to the model's sentinel
  * contract) and the web server (which maps null to HTTP 404 at the wire).
  * Both sides see the same files because both go through this store.
  */

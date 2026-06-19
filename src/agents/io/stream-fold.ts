@@ -1,4 +1,4 @@
-import type { AgentChunk } from "./chunks";
+import type { AgentChunk } from "../types/chunks";
 
 /**
  * The reply-stream fold, shared by the console and web send loops: pure

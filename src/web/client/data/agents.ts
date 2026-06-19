@@ -3,7 +3,7 @@ import {
   type AgentId,
   type CourseOutline,
   type EditorKind,
-} from "../../../shared/catalog";
+} from "../../../agents/catalog/catalog";
 
 export type { CourseOutline, EditorKind };
 

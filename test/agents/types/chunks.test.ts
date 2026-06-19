@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseStreamFrame } from "../../src/shared/chunks";
+import { parseStreamFrame } from "../../../src/agents/types/chunks";
 
 describe("parseStreamFrame", () => {
   test("parses text and debug chunks", () => {

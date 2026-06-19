@@ -6,7 +6,7 @@ import {
   createLessonFileStore,
   editorCommand,
   resolveLessonPath,
-} from "../src/lesson-files";
+} from "../../src/shared/lesson-files";
 
 describe("resolveLessonPath (path-traversal guard)", () => {
   test("joins a bare filename onto the scratch dir", () => {

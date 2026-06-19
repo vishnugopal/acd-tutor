@@ -1,13 +1,13 @@
 import { defineAgentProfile } from "@flue/runtime";
 import acdTutor from "../../skills/acd-tutor/SKILL.md" with { type: "skill" };
-import { createLessonFileTools } from "../../tools";
-import { ACD_SCRATCH_DIR, OPEN_MODE } from "../../workspaces";
+import { createLessonFileTools } from "../io/tools";
+import { ACD_SCRATCH_DIR, OPEN_MODE } from "../catalog/workspaces";
 
 /**
  * Everything the ACD tutor agent is, minus the model: instructions, the ACD
  * skill, and the lesson-file tools. The agent file (src/agents/acd-tutor.ts)
  * binds the model and sandbox. Workspace location + openFile behavior come
- * from src/workspaces.ts (ACD_TUTOR_SCRATCH_DIR / TUTOR_OPEN_MODE).
+ * from src/shared/workspaces.ts (ACD_TUTOR_SCRATCH_DIR / TUTOR_OPEN_MODE).
  */
 export const acdProfile = defineAgentProfile({
   instructions: [

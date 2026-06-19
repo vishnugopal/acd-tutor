@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FlueClient, FlueEvent } from "@flue/sdk";
-import { __test__, createAgentSession, type AgentChunk } from "../src/agent-io";
-import * as ev from "./fixtures/faux-events";
+import { __test__, createAgentSession, type AgentChunk } from "../../../src/agents/io/agent-io";
+import * as ev from "../../fixtures/faux-events";
 
 const { truncate, formatDebugEvent } = __test__!;
 

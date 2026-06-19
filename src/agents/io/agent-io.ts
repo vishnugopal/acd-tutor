@@ -1,5 +1,5 @@
 import type { DirectAgentPayload, FlueClient, FlueEvent } from "@flue/sdk";
-import type { AgentChunk } from "./shared/chunks";
+import type { AgentChunk } from "../types/chunks";
 
 export type { AgentChunk };
 

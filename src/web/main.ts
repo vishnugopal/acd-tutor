@@ -1,6 +1,6 @@
 import { AGENT_CHOICES } from "../agents/profiles/registry";
-import { startFlueServer } from "../runner";
-import { WORKSPACES } from "../workspaces";
+import { startFlueServer } from "../shared/runner";
+import { WORKSPACES } from "../agents/catalog/workspaces";
 import { startWebServer } from "./server";
 
 /**

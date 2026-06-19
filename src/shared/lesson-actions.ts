@@ -1,4 +1,4 @@
-import type { AgentAction } from "./catalog";
+import type { AgentAction } from "../agents/catalog/catalog";
 
 /** The shared workbook-start action shown before any lesson files exist. */
 export const START_LESSON_ACTION: AgentAction = {

@@ -2,7 +2,8 @@
  * The agent catalog — the single source of truth for agent identity and
  * presentation. Layer 0: pure data + calculations, free of node:* and
  * process.env, so it bundles into the browser, the host, and the Flue build
- * alike. Host-side env resolution (scratch dirs) lives in src/workspaces.ts.
+ * alike. Host-side env resolution (scratch dirs) lives in
+ * src/shared/workspaces.ts.
  *
  * The Flue trio per agent (src/agents/<id>.ts stub, profiles/<id>.ts,
  * src/skills/<id>/) cannot be derived from data — Flue discovers agents by

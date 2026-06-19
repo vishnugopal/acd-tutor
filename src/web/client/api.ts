@@ -1,4 +1,4 @@
-import { parseStreamFrame } from "../../shared/chunks";
+import { parseStreamFrame } from "../../agents/types/chunks";
 import type { AgentInfo, ReplyChunk } from "./types";
 
 /**

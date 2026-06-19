@@ -1,11 +1,11 @@
-import { createAgentSession } from "./agent-io";
-import { AGENT_CHOICES } from "./agents/profiles/registry";
-import { resolveConsoleActions } from "./console/actions";
-import { runConsole } from "./console";
-import { createLessonFileStore } from "./lesson-files";
-import { startFlueServer } from "./runner";
-import { isAgentId } from "./shared/catalog";
-import { workspaceDir } from "./workspaces";
+import { AGENT_CHOICES } from "../agents/profiles/registry";
+import { createAgentSession } from "../agents/io/agent-io";
+import { isAgentId } from "../agents/catalog/catalog";
+import { createLessonFileStore } from "../shared/lesson-files";
+import { startFlueServer } from "../shared/runner";
+import { workspaceDir } from "../agents/catalog/workspaces";
+import { resolveConsoleActions } from "./actions";
+import { runConsole } from ".";
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error(

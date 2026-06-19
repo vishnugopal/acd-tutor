@@ -267,7 +267,7 @@
 <header>
   <div class="brand">
     <b>acd-tutor <em>/</em> architecture map</b>
-    <span>post-refactor · june 2026</span>
+    <span>post-reorg · june 2026</span>
   </div>
   <input id="search" class="search" type="search" placeholder="search components… (autosave, sse, catalog)" autocomplete="off">
   <nav class="chips" id="chips"></nav>
@@ -285,11 +285,20 @@
 <aside class="intro hidden" id="intro">
   <button class="intro-close" id="intro-close" title="Close">✕</button>
   <div class="kicker">How to read this</div>
-  <h1>One system, three compilation worlds, <i>one shared floor.</i></h1>
+  <h1>Four code layers, <i>three compilation worlds underneath.</i></h1>
   <p>
-    Every card is a module (or a tight cluster of files). Columns are <b>compilation
-    worlds</b> — what gets bundled where decides what may import what. The indigo band at
-    the bottom is <b>layer&nbsp;0</b>: pure data and calculations that every world compiles in.
+    Every card is a module (or a tight cluster of files). The <b>big zones are the
+    architectural layers</b> — the folders the code is organized into: <b>AGENT</b>
+    (<code>src/agents</code> + <code>src/skills</code> — identity, profiles, skills, agent I/O, the flue
+    artifact), <b>CONSOLE</b> (<code>src/console</code>), <b>WEB</b> (<code>src/web</code>), and the
+    full-width <b>SHARED</b> floor (<code>src/shared</code>) that every layer above reuses.
+  </p>
+  <p>
+    The <b>compilation world</b> is the secondary boundary — what gets bundled where, which decides what
+    may import what. It rides along on each card's accent stripe and the small dots in its corner:
+    <i>layer&nbsp;0</i> (browser-safe pure data, no <code>node:*</code>/<code>process.env</code>),
+    <i>flue build</i>, <i>host</i> (bun), <i>browser</i>, and <i>runtime artifact</i>. So an AGENT-layer
+    module can still be a layer-0 pure type, and a WEB-layer module can be either host or browser.
   </p>
   <p>
     <b>Drag</b> cards to rearrange (positions stick). <b>Hover</b> to isolate a module's wiring.
@@ -297,18 +306,25 @@
     should poke at. Filter by concern above, or search.
   </p>
   <div class="legend">
-    <span><i style="background:var(--shared)"></i>shared layer 0 (pure)</span>
-    <span><i style="background:var(--flue)"></i>flue build world</span>
-    <span><i style="background:var(--host)"></i>host process (bun)</span>
-    <span><i style="background:var(--browser)"></i>browser bundle</span>
+    <span style="grid-column:1/-1;color:var(--muted);font-size:9px;letter-spacing:.18em;text-transform:uppercase">layer (zone) · primary</span>
+    <span><i style="background:var(--flue)"></i>agent</span>
+    <span><i style="background:var(--host)"></i>console</span>
+    <span><i style="background:var(--browser)"></i>web</span>
+    <span><i style="background:var(--shared)"></i>shared</span>
+    <span style="grid-column:1/-1;color:var(--muted);font-size:9px;letter-spacing:.18em;text-transform:uppercase">compilation world (stripe + dots) · secondary</span>
+    <span><i style="background:var(--shared)"></i>layer 0 (pure)</span>
+    <span><i style="background:var(--flue)"></i>flue build</span>
+    <span><i style="background:var(--host)"></i>host (bun)</span>
+    <span><i style="background:var(--browser)"></i>browser</span>
     <span><i style="background:var(--artifact)"></i>runtime artifact</span>
-    <span></span>
+    <span style="grid-column:1/-1;color:var(--muted);font-size:9px;letter-spacing:.18em;text-transform:uppercase">edges</span>
     <span><i class="edge-sw" style="border-color:#3f536f"></i>import</span>
     <span><i class="edge-sw" style="border-color:#3193c2;border-top-style:dashed"></i>runtime (spawn/HTTP)</span>
     <span><i class="edge-sw" style="border-color:#b98935;border-top-style:dashed"></i>filesystem</span>
     <span><i class="edge-sw" style="border-color:#7c5fd3;border-top-style:dashed"></i>bundled into</span>
   </div>
   <div class="stats">
+    <span class="stat"><b>4</b> code layers</span>
     <span class="stat"><b>3</b> agents</span>
     <span class="stat"><b>2</b> frontends</span>
     <span class="stat"><b>3</b> compile worlds</span>
@@ -328,7 +344,7 @@
   <div class="drawer-body" id="drawer-body"></div>
 </aside>
 
-<footer>acd-tutor architecture map · generated 2026-06-12 against the post-refactor working tree · single file, zero dependencies</footer>
+<footer>acd-tutor architecture map · updated 2026-06-19 · grouped by code layer (agent · console · web · shared), compilation world as the secondary boundary · single file, zero dependencies</footer>
 
 <script>
 "use strict";
@@ -354,11 +370,10 @@ const CONCERNS = [
 ];
 
 const ZONES = [
-  { label: "FLUE BUILD", sub: "bundled into dist/server.mjs · agent subprocess", x: 20,   y: 70,  w: 380,  h: 610, color: "var(--flue)" },
-  { label: "HOST PROCESS (BUN)", sub: "builds, spawns & talks to the agent server", x: 420,  y: 70,  w: 580,  h: 610, color: "var(--host)" },
-  { label: "BROWSER", sub: "React SPA · Bun-bundled from the same repo", x: 1020, y: 70,  w: 720,  h: 810, color: "var(--browser)" },
-  { label: "HOST ∩ FLUE BUNDLE", sub: "compiled into both worlds — keep them import-clean", x: 20,   y: 700, w: 980,  h: 180, color: "var(--artifact)" },
-  { label: "SHARED — LAYER 0", sub: "pure data + calculations · no node:* · no process.env · zero imports", x: 20,   y: 910, w: 1720, h: 170, color: "var(--shared)" },
+  { label: "AGENT", sub: "src/agents · src/skills — identity, profiles, skills, agent I/O, the flue artifact", x: 20, y: 70, w: 560, h: 740, color: "var(--flue)" },
+  { label: "CONSOLE", sub: "src/console — Ink frontend + composition root", x: 600, y: 70, w: 400, h: 740, color: "var(--host)" },
+  { label: "WEB", sub: "src/web — Bun.serve JSON/SSE API + React SPA", x: 1020, y: 70, w: 720, h: 740, color: "var(--browser)" },
+  { label: "SHARED", sub: "src/shared — agent-agnostic lesson plumbing + server runner, reused by every layer above", x: 20, y: 830, w: 1720, h: 240, color: "var(--shared)" },
 ];
 
 /* Node fields: id, label, sub, path, world(s), kind, concerns, x, y,
@@ -366,8 +381,8 @@ const ZONES = [
 const NODES = [
 
   /* ---------------- shared layer 0 ---------------- */
-  { id: "catalog", label: "shared/catalog.ts", sub: "agent identity · single source", path: "src/shared/catalog.ts",
-    worlds: ["shared"], kind: "data + calculations", concerns: ["identity"], x: 300, y: 955, w: 230,
+  { id: "catalog", label: "agents/catalog/catalog.ts", sub: "agent identity · single source", path: "src/agents/catalog/catalog.ts",
+    worlds: ["shared"], kind: "data + calculations", concerns: ["identity"], x: 325, y: 120, w: 230,
     summary: "The one place agent identity lives. Everything that used to be three unlinked id-keyed maps now derives from this file, and the compiler refuses a missing entry.",
     points: [
       "<code>AgentId</code> union + <code>AGENTS satisfies Record&lt;AgentId, AgentDefinition&gt;</code> — forgetting an entry is a compile error",
@@ -379,10 +394,10 @@ const NODES = [
       "Must stay pure: no node:*, no process.env — the browser bundle AND flue build both compile it, so either bundler breaks loudly if violated",
       "The Flue trio (stub/profile/skill) can't be derived — Flue discovers agents by filename. The filesystem-consistency test is the guard",
     ],
-    tests: ["test/shared/catalog.test.ts — calculations + filesystem consistency (AgentId ↔ stub/profile/skill, no orphans)"] },
+    tests: ["test/agents/catalog/catalog.test.ts — calculations + filesystem consistency (AgentId ↔ stub/profile/skill, no orphans)"] },
 
-  { id: "chunks", label: "shared/chunks.ts", sub: "streaming vocabulary", path: "src/shared/chunks.ts",
-    worlds: ["shared"], kind: "data + calculations", concerns: ["streaming"], x: 780, y: 955, w: 230,
+  { id: "chunks", label: "agents/types/chunks.ts", sub: "streaming vocabulary", path: "src/agents/types/chunks.ts",
+    worlds: ["shared"], kind: "data + calculations", concerns: ["streaming"], x: 325, y: 230, w: 230,
     summary: "The streaming chunk, defined once. Previously this exact shape existed three times (agent-io, console, web client), with a no-op converter papering over the seam.",
     points: [
       "<code>AgentChunk</code> = text | debug — what agent-io yields",
@@ -390,10 +405,10 @@ const NODES = [
       "<code>parseStreamFrame(raw)</code> → frame or <code>null</code> for malformed input — skip, don't crash",
     ],
     notes: ["Adding a frame kind? The parser, the server's emit type, and the client loop all type-check against this one union now — change it here only"],
-    tests: ["test/shared/chunks.test.ts — valid / garbage / wrong-shape → null"] },
+    tests: ["test/agents/types/chunks.test.ts — valid / garbage / wrong-shape → null"] },
 
-  { id: "stream-fold", label: "shared/stream-fold.ts", sub: "reply-stream fold", path: "src/shared/stream-fold.ts",
-    worlds: ["shared"], kind: "calculations", concerns: ["streaming", "chat-ui"], x: 1490, y: 955, w: 230,
+  { id: "stream-fold", label: "agents/io/stream-fold.ts", sub: "reply-stream fold", path: "src/agents/io/stream-fold.ts",
+    worlds: ["shared"], kind: "calculations", concerns: ["streaming", "chat-ui"], x: 325, y: 670, w: 230,
     summary: "The reply-stream fold, shared by the console and web send loops: visible debug lines flush accumulated prose first so the transcript stays chronological; hidden debug lines fold away entirely.",
     points: [
       "<code>foldChunk(state, chunk, debugMode)</code> → { state, append } — trivially unit-testable",
@@ -401,10 +416,10 @@ const NODES = [
       "<code>FoldedMessage</code> roles (tutor | debug | info) are assignable to both frontends' message shapes",
     ],
     notes: [],
-    tests: ["test/shared/stream-fold.test.ts — fold + finish decision tables"] },
+    tests: ["test/agents/io/stream-fold.test.ts — fold + finish decision tables"] },
 
   { id: "lesson-names", label: "shared/lesson-names.ts", sub: "filename calculations", path: "src/shared/lesson-names.ts",
-    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files"], x: 1240, y: 955, w: 230,
+    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files"], x: 80, y: 905, w: 230,
     summary: "Pure calculations over lesson filenames, shared by the browser (tabs, dashboard progress) and the host (store listing filter).",
     points: [
       "<code>isHiddenFile</code> — dotfiles are host bookkeeping, never lessons",
@@ -415,7 +430,7 @@ const NODES = [
     tests: ["test/shared/lesson-names.test.ts"] },
 
   { id: "lesson-actions", label: "shared/lesson-actions.ts", sub: "Start + workbook action calc", path: "src/shared/lesson-actions.ts",
-    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 1020, y: 955, w: 210,
+    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 360, y: 905, w: 210,
     summary: "The workbook chat-action rule, shared by the web IDE and the console runner: show Start until lesson files exist, then hand back the agent's normal actions.",
     points: [
       "<code>START_LESSON_ACTION</code> — the shared Start button",
@@ -425,8 +440,8 @@ const NODES = [
     tests: ["test/shared/lesson-actions.test.ts"] },
 
   /* ---------------- host ∩ flue bundle ---------------- */
-  { id: "workspaces", label: "workspaces.ts", sub: "env resolution over catalog", path: "src/workspaces.ts",
-    worlds: ["host", "flue"], kind: "calculations + env reads", concerns: ["identity", "lesson-files"], x: 70, y: 726,
+  { id: "workspaces", label: "agents/catalog/workspaces.ts", sub: "env resolution over catalog", path: "src/agents/catalog/workspaces.ts",
+    worlds: ["host", "flue"], kind: "calculations + env reads", concerns: ["identity", "lesson-files"], x: 325, y: 340,
     summary: "The one module that reads process.env to resolve catalog workspaces into real scratch dirs. Which agents have a workspace is catalog data; where it lands on disk is decided here.",
     points: [
       "<code>workspaceDir(id)</code> — env override (e.g. ACD_TUTOR_SCRATCH_DIR) over the catalog default; null for chat-only agents",
@@ -436,8 +451,8 @@ const NODES = [
     notes: ["Bundled into the flue server too — keep it free of anything browser- or flue-hostile beyond env reads"],
     tests: ["Covered indirectly by tools + e2e suites (env overrides exercised by e2e scratch dirs)"] },
 
-  { id: "lesson-files", label: "lesson-files.ts", sub: "THE lesson-file module", path: "src/lesson-files.ts",
-    worlds: ["host", "flue"], kind: "calculations + actions", concerns: ["lesson-files"], x: 330, y: 726,
+  { id: "lesson-files", label: "shared/lesson-files.ts", sub: "THE lesson-file module", path: "src/shared/lesson-files.ts",
+    worlds: ["host", "flue"], kind: "calculations + actions", concerns: ["lesson-files"], x: 640, y: 905,
     summary: "The single implementation over the scratch dirs. Before the refactor this logic existed twice (agent tools + web/files.ts) with duplicated path-guarding and dotfile filtering; web/files.ts is deleted.",
     points: [
       "<code>resolveLessonPath</code> (calc) — basename() collapses ../x and /etc/x to leaf names: the path-traversal guard",
@@ -448,27 +463,27 @@ const NODES = [
       "The only module that touches the scratch dir — if disk behavior changes, it changes once",
       "openInEditor replaced the old shell:true spawn; multi-word $EDITOR (\"zed -w\") verified to split correctly",
     ],
-    tests: ["test/lesson-files.test.ts — traversal, editorCommand argv shape, open-request round-trip incl. malformed JSON"] },
+    tests: ["test/shared/lesson-files.test.ts — traversal, editorCommand argv shape, open-request round-trip incl. malformed JSON"] },
 
-  { id: "tools", label: "tools.ts", sub: "model sentinel adapter", path: "src/tools.ts",
-    worlds: ["flue", "host"], kind: "actions (thin adapter)", concerns: ["lesson-files"], x: 590, y: 726,
+  { id: "tools", label: "agents/io/tools.ts", sub: "model sentinel adapter", path: "src/agents/io/tools.ts",
+    worlds: ["flue", "host"], kind: "actions (thin adapter)", concerns: ["lesson-files"], x: 325, y: 450,
     summary: "Model-callable tools (listFiles / readFile / writeFile / openFile) as a thin adapter: store results in, sentinels out. Handlers run in the flue server process.",
     points: [
       "<code>NO_FILES</code> / <code>FILE_NOT_FOUND</code> sentinels — the model's prompt contract, referenced by the SKILL.md files",
       "openFile: web mode writes the .open-request signal; editor mode spawns via the store",
     ],
     notes: ["Tool descriptions and sentinel strings are part of the prompt — do not rename them casually; the tutors' behavior depends on them"],
-    tests: ["test/tools.test.ts — sentinel mapping per tool, web-mode signal write"] },
+    tests: ["test/agents/io/tools.test.ts — sentinel mapping per tool, web-mode signal write"] },
 
-  { id: "open-request", label: "open-request.ts", sub: "tool ⇄ web-editor contract", path: "src/open-request.ts",
-    worlds: ["host", "flue"], kind: "data", concerns: ["lesson-files"], x: 330, y: 806,
+  { id: "open-request", label: "shared/open-request.ts", sub: "tool ⇄ browser-editor contract", path: "src/shared/open-request.ts",
+    worlds: ["host", "flue"], kind: "data", concerns: ["lesson-files"], x: 920, y: 905,
     summary: "The contract between the agent's openFile tool (web mode) and the web editor: a hidden dotfile in the scratch dir, consumed once by the client after each reply.",
     points: ["<code>OPEN_REQUEST_FILE</code> = \".open-request\"", "<code>OpenRequest</code> { filename, requestedAt }"],
     notes: ["Dotfiles are excluded from every listing, so neither the model nor the student ever sees the signal"],
     tests: ["Round-trip covered in test/lesson-files.test.ts and the web e2e suite"] },
 
   { id: "scratch", label: "/tmp/<agent>/scratch", sub: "filesystem seam", path: "(runtime artifact)",
-    worlds: ["artifact"], kind: "state on disk", concerns: ["lesson-files"], x: 770, y: 800, w: 200, artifact: true,
+    worlds: ["artifact"], kind: "state on disk", concerns: ["lesson-files"], x: 1480, y: 905, w: 200, artifact: true,
     summary: "The shared workspace: the tutor's tools and the web editor read and write the same files here. Both sides now reach it through the same LessonFileStore.",
     points: ["Lesson files (lesson-1.ts …) + the hidden .open-request signal"],
     notes: ["Default location is /tmp — not cross-platform; override per agent via the catalog's dirEnvVar"],
@@ -476,122 +491,122 @@ const NODES = [
 
   /* ---------------- flue build world ---------------- */
   { id: "stubs", label: "agents/<id>.ts ×3", sub: "Flue agent stubs", path: "src/agents/{acd-tutor,argumentative-essay-tutor,socratic-tutor}.ts",
-    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 110, y: 150,
+    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 55, y: 120,
     summary: "16-line stubs binding model + sandbox + profile. The filename IS the agent id — Flue discovers one agent per top-level file, which is why these can't be generated from the catalog.",
     points: [
       "<code>createAgent()</code> with model anthropic/claude-sonnet-4-6 and a local() sandbox",
       "Exported <code>route</code> middleware opts each agent into HTTP at POST /agents/&lt;name&gt;/:id",
     ],
     notes: ["Adding an agent = catalog entry (compile-checked) + this trio (test-checked). The catalog test names exactly what's missing"],
-    tests: ["test/shared/catalog.test.ts — filesystem consistency"],
+    tests: ["test/agents/catalog/catalog.test.ts — filesystem consistency"],
     files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
 
   { id: "profiles", label: "profiles/<id>.ts ×3", sub: "instructions · skills · tools", path: "src/agents/profiles/*.ts",
-    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 110, y: 260,
+    worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 55, y: 230,
     summary: "Everything an agent is, minus the model: instructions, its SKILL.md, and (for workbook tutors) the lesson-file tools wired to its workspace.",
     points: [
       "<code>defineAgentProfile({ instructions, skills, tools })</code>",
       "Imports SKILL.md via <code>with { type: \"skill\" }</code>",
     ],
-    notes: ["The skill import only resolves inside flue build — importing a profile from host code breaks `bun src/main.ts`. This is the hard wall the layering respects"],
+    notes: ["The skill import only resolves inside flue build — importing a profile from host code breaks `bun src/console/main.ts`. This is the hard wall the layering respects"],
     tests: ["Exercised end-to-end by the faux-agent e2e build"],
     files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
 
   { id: "skills", label: "skills/<id>/ ×3", sub: "SKILL.md + references", path: "src/skills/*/",
-    worlds: ["flue"], kind: "data (pedagogy)", concerns: ["identity"], x: 110, y: 370,
+    worlds: ["flue"], kind: "data (pedagogy)", concerns: ["identity"], x: 55, y: 340,
     summary: "The tutors' actual teaching behavior. Behavior changes belong here, not in the frontends — the code on this map is deliberately agnostic about what is taught.",
     points: ["SKILL.md per tutor + reference docs (concept banks, exercise banks, question patterns)"],
     notes: ["The SKILL.md files reference the tool sentinels (NO_FILES / FILE_NOT_FOUND) — keep prompts and tools.ts in sync"],
-    tests: ["test/shared/catalog.test.ts asserts each skill dir + SKILL.md exists"] },
+    tests: ["test/agents/catalog/catalog.test.ts asserts each skill dir + SKILL.md exists"] },
 
   { id: "flue-server", label: "dist/server.mjs", sub: "Flue agent server · :3789", path: "(built by `flue build`)",
-    worlds: ["artifact"], kind: "runtime artifact", concerns: ["streaming", "wiring"], x: 100, y: 510, w: 220, artifact: true,
+    worlds: ["artifact"], kind: "runtime artifact", concerns: ["streaming", "wiring"], x: 55, y: 560, w: 220, artifact: true,
     summary: "The compiled agent subprocess: HTTP transport at /agents/<name>/:id with SSE streaming. Conversation memory lives here, keyed by instance id — both frontends are stateless about it.",
-    points: ["Bundles: stubs, profiles, skills, tools, lesson-files, workspaces, shared/*"],
+    points: ["Bundles: stubs, profiles, skills, the agent modules under src/agents/{catalog,io,types}, and the shared modules under src/shared/"],
     notes: ["Edits under src/agents/ or src/skills/ need a rebuild — bun start always rebuilds first"],
     tests: ["e2e builds a faux variant from test/e2e/flue.config.ts so the real one never sees test agents"] },
 
   /* ---------------- host: entries & transport ---------------- */
-  { id: "main", label: "main.ts", sub: "console entry · composition", path: "src/main.ts",
-    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 446, y: 112,
+  { id: "main", label: "console/main.ts", sub: "console entry · composition", path: "src/console/main.ts",
+    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 625, y: 120,
     summary: "Console composition root: start the flue server, hand AGENT_CHOICES, a createReply factory, and the workspace-driven action resolver to the console. No logic of its own.",
     points: ["Wires <code>createReply(id)</code> → a fresh AgentSession per chosen agent", "Wires the shared workbook action calculator through the host workspace store"],
     notes: ["Agent lists are passed by injection here (not imported deep down) — that's what lets e2e inject tutor-faux"],
     tests: ["Composition covered by tutor e2e"] },
 
   { id: "web-main", label: "web/main.ts", sub: "web entry · composition", path: "src/web/main.ts",
-    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 646, y: 112,
+    worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 1050, y: 120,
     summary: "Web composition root: sets TUTOR_OPEN_MODE=web before spawning flue (so openFile signals the editor instead of spawning $EDITOR), then starts the web server on :3790.",
     points: ["Passes WORKSPACES + AGENT_CHOICES into startWebServer by injection"],
     notes: ["The env mutation must happen before the flue spawn — ordering is load-bearing and implicit; flagged low-severity in the June review"],
     tests: ["web e2e mirrors this wiring"] },
 
   { id: "registry", label: "profiles/registry.ts", sub: "AGENT_CHOICES — derived", path: "src/agents/profiles/registry.ts",
-    worlds: ["host"], kind: "data (derived)", concerns: ["identity", "wiring"], x: 846, y: 112,
+    worlds: ["host"], kind: "data (derived)", concerns: ["identity", "wiring"], x: 55, y: 450,
     summary: "One line of derivation: AGENT_LIST.map(toPresentation). Used to be 60 lines of hand-maintained copies of catalog data.",
     points: ["Host-safe: imports no profiles or SKILL.md"],
     notes: [],
     tests: ["toPresentation covered in catalog tests"] },
 
-  { id: "runner", label: "runner.ts", sub: "build · spawn · readiness", path: "src/runner.ts",
-    worlds: ["host"], kind: "actions", concerns: ["wiring"], x: 846, y: 206,
+  { id: "runner", label: "shared/runner.ts", sub: "build · spawn · readiness", path: "src/shared/runner.ts",
+    worlds: ["host"], kind: "actions", concerns: ["wiring"], x: 1200, y: 905,
     summary: "Generic, agent-agnostic server lifecycle: run flue build, spawn dist/server.mjs, poll /openapi.json until ready, own SIGINT/crash/shutdown.",
     points: ["Returns { baseUrl, client, shutdown }"],
     notes: ["Untested directly (flagged in the review's optional Phase 5); exercised by both e2e suites"],
     tests: ["Indirect via e2e server lifecycle"] },
 
-  { id: "agent-io", label: "agent-io.ts", sub: "SSE → AsyncIterable<AgentChunk>", path: "src/agent-io.ts",
-    worlds: ["host"], kind: "actions + calculations", concerns: ["streaming"], x: 846, y: 300,
+  { id: "agent-io", label: "agents/io/agent-io.ts", sub: "SSE → AsyncIterable<AgentChunk>", path: "src/agents/io/agent-io.ts",
+    worlds: ["host"], kind: "actions + calculations", concerns: ["streaming"], x: 325, y: 560,
     summary: "Transport only: pins an agent + conversation instance over @flue/sdk's streaming invoke and yields the shared AgentChunk type. No printing, no prompting.",
     points: [
       "<code>createAgentSession(client, agent, instanceId?, hooks?)</code>",
       "<code>formatDebugEvent</code> (calc) — one concise line per tool call / turn / log",
       "hooks.onEvent — the web server captures agent_end for history replay",
     ],
-    notes: ["Re-exports AgentChunk from shared/chunks for compatibility — the type itself no longer lives here"],
-    tests: ["test/agent-io.test.ts — truncate/formatDebugEvent via __test__, streaming via fixtures"] },
+    notes: ["Re-exports AgentChunk from agents/types/chunks for compatibility — the type itself no longer lives here"],
+    tests: ["test/agents/io/agent-io.test.ts — truncate/formatDebugEvent via __test__, streaming via fixtures"] },
 
   /* ---------------- host: console frontend ---------------- */
   { id: "console-index", label: "console/index.tsx", sub: "runConsole · picker → chat", path: "src/console/index.tsx",
-    worlds: ["host"], kind: "actions (UI shell)", concerns: ["chat-ui", "wiring"], x: 446, y: 206,
+    worlds: ["host"], kind: "actions (UI shell)", concerns: ["chat-ui", "wiring"], x: 625, y: 230,
     summary: "Renders the agent picker (skipped for a single agent), then the chat for the chosen agent; prints the farewell after exit. It now also refreshes the action row from a host-supplied resolver after each reply.",
     points: ["Takes <code>agents: AgentChoice[]</code> + <code>createReply(id)</code> — fully injected", "Optional <code>resolveActions</code> keeps workbook buttons in sync with the workspace"],
     notes: [],
     tests: ["Menu/picker behavior currently untested (Phase 5 debt, deliberate)"] },
 
   { id: "console-actions", label: "console/actions.ts", sub: "workspace-driven action resolver", path: "src/console/actions.ts",
-    worlds: ["host"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 646, y: 206,
+    worlds: ["host"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 810, y: 230,
     summary: "Host-side adapter that asks the shared lesson-action calculator for the current console buttons. Workbook agents get Start when their workspace is empty; injected/chat-only agents keep whatever actions they were handed.",
     points: ["Uses the shared catalog to detect workbook agents, then delegates to lessonChatActions"],
     notes: [],
     tests: ["test/console/actions.test.ts"] },
 
   { id: "console-app", label: "console/App.tsx", sub: "slash commands + layout", path: "src/console/App.tsx",
-    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui", "streaming"], x: 446, y: 300,
+    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui", "streaming"], x: 625, y: 340,
     summary: "After Phase 3 this is dispatch and layout only: /exit and /debug act immediately; everything else queues through useChatStream. The transport loop no longer lives in the component.",
     points: ["The old no-op AgentChunk→ReplyChunk converter is deleted — both are the shared type now"],
     notes: [],
     tests: ["test/console/App.test.tsx — greeting, streaming, /debug toggle, FIFO queue, error render"] },
 
   { id: "use-chat-stream", label: "console/useChatStream.ts", sub: "send loop over the shared fold", path: "src/console/useChatStream.ts",
-    worlds: ["host"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 446, y: 394,
+    worlds: ["host"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 625, y: 450,
     summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (shared/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line, error render, and the post-reply callback used to refresh workbook buttons.",
     points: [
       "debugMode is read through a ref so /debug applies mid-reply",
       "onReplyDone lets the runner refresh workspace-driven actions after each turn",
     ],
     notes: [],
-    tests: ["Fold covered in test/shared/stream-fold.test.ts; hook exercised via test/console/App.test.tsx"] },
+    tests: ["Fold covered in test/agents/io/stream-fold.test.ts; hook exercised via test/console/App.test.tsx"] },
 
   { id: "console-types", label: "console/types.ts", sub: "aliases of shared types", path: "src/console/types.ts",
-    worlds: ["host"], kind: "data (types)", concerns: ["identity", "chat-ui"], x: 446, y: 488,
+    worlds: ["host"], kind: "data (types)", concerns: ["identity", "chat-ui"], x: 810, y: 120,
     summary: "AgentChoice, ReplyChunk and ConsoleAction are now aliases of the shared AgentPresentation / AgentChunk / AgentAction. This file being an accidental type hub was the old layering violation's root.",
     points: ["Still owns the console-only shapes: ConsoleOptions, Message (5 roles)"],
     notes: ["Nothing outside src/console should import this anymore — the shared layer is the source. (The old web/server.ts import is gone.)"],
     tests: ["Type-level only; guarded by tsc"] },
 
   { id: "console-widgets", label: "console/{InputBar,Transcript,…}", sub: "Ink widgets", path: "src/console/*.tsx",
-    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui"], x: 646, y: 300,
+    worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui"], x: 810, y: 340,
     summary: "The Ink rendering kit: input with word-jump editing, transcript with markdown, menu, spinner.",
     points: ["TextInput exposes wordStart/wordEnd via __test__"],
     notes: [],
@@ -600,7 +615,7 @@ const NODES = [
 
   /* ---------------- host: web server ---------------- */
   { id: "web-server", label: "web/server.ts", sub: "Bun.serve · JSON/SSE API · :3790", path: "src/web/server.ts",
-    worlds: ["host"], kind: "actions", concerns: ["streaming", "lesson-files", "wiring"], x: 810, y: 440,
+    worlds: ["host"], kind: "actions", concerns: ["streaming", "lesson-files", "wiring"], x: 1050, y: 225,
     summary: "The browser-facing server: serves the bundled React client and a small API mirroring the console's wiring. Hardened in Phase 3: every JSON body is guard-validated, SSE emits typed StreamFrames, and the session/history maps are capped.",
     points: [
       "<code>sseReply</code> — one data: frame per chunk, then done; 15s comment heartbeat",
@@ -615,22 +630,22 @@ const NODES = [
     tests: ["test/web/server.test.ts — body validation + cap eviction on port 0; test/e2e/web.e2e.test.ts — full streaming path"] },
 
   { id: "web-history", label: "web/history.ts", sub: "transcript accumulation", path: "src/web/history.ts",
-    worlds: ["host"], kind: "calculations", concerns: ["streaming"], x: 810, y: 560,
+    worlds: ["host"], kind: "calculations", concerns: ["streaming"], x: 1280, y: 120,
     summary: "Maps Flue's normalized messages to the chat transcript. Key subtlety: agent_end carries only that run's new messages, so history accumulates turn by turn — never overwrites.",
     points: ["<code>toTranscript</code> · <code>appendTurn</code> — an empty turn (error/abort path) leaves history untouched"],
     notes: [],
-    tests: ["test/web-history.test.ts"] },
+    tests: ["test/web/history.test.ts"] },
 
   /* ---------------- browser ---------------- */
   { id: "client-app", label: "client/App.tsx", sub: "screen router", path: "src/web/client/App.tsx",
-    worlds: ["browser"], kind: "actions (UI)", concerns: ["wiring", "chat-ui"], x: 1060, y: 112,
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["wiring", "chat-ui"], x: 1050, y: 330,
     summary: "Fetches the agent list, then routes: agents with a workbook editor (agentEditor() over the catalog) get the IDE screen, the rest chat-only.",
     points: [],
     notes: [],
     tests: ["Untested directly (Phase 5 debt)"] },
 
   { id: "client-api", label: "client/api.ts", sub: "fetch + SSE client", path: "src/web/client/api.ts",
-    worlds: ["browser"], kind: "actions", concerns: ["streaming", "lesson-files"], x: 1290, y: 112,
+    worlds: ["browser"], kind: "actions", concerns: ["streaming", "lesson-files"], x: 1280, y: 225,
     summary: "Thin client for the web API. streamReply was the riskiest code in the old client; Phase 3 fixed all three soft spots.",
     points: [
       "<code>streamReply(sessionId, msg, signal?)</code> — guarded parse via parseStreamFrame (malformed frames skipped)",
@@ -641,28 +656,28 @@ const NODES = [
     tests: ["test/web/client/api.test.ts — mocked-fetch: happy / malformed / missing-done / error frame / abort"] },
 
   { id: "client-types", label: "client/types.ts", sub: "aliases of shared types", path: "src/web/client/types.ts",
-    worlds: ["browser"], kind: "data (types)", concerns: ["identity"], x: 1520, y: 112,
+    worlds: ["browser"], kind: "data (types)", concerns: ["identity"], x: 1510, y: 120,
     summary: "AgentInfo and ReplyChunk are aliases of the shared wire shapes — these used to be hand-copied twins that could drift undetected.",
     points: ["Owns browser-only shapes: ChatMessage, MascotMood, Screen"],
     notes: [],
     tests: ["Type-level only; guarded by tsc"] },
 
   { id: "data-agents", label: "client/data/agents.ts", sub: "cosmetic map + catalog lookups", path: "src/web/client/data/agents.ts",
-    worlds: ["browser"], kind: "data + calculations", concerns: ["identity", "chat-ui"], x: 1060, y: 300,
+    worlds: ["browser"], kind: "data + calculations", concerns: ["identity", "chat-ui"], x: 1280, y: 330,
     summary: "Shrunk to what the catalog shouldn't know: emoji + Tailwind classes, still compile-checked via satisfies Record<AgentId,…>. Editor kind and course outlines moved into the catalog.",
     points: ["<code>agentIcon</code> / <code>agentCourse</code> / <code>agentEditor</code> — safe lookups for wire ids", "data/gamification.ts: XP/streak/hearts remain labeled static placeholders"],
     notes: ["The dead ACD_COURSE_STEPS copy in gamification.ts was deleted in Phase 1"],
     tests: ["Compile-checked; behavior trivial"] },
 
   { id: "home-screen", label: "screens/HomeScreen.tsx", sub: "dashboard + course steppers", path: "src/web/client/screens/HomeScreen.tsx",
-    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1060, y: 206,
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1050, y: 435,
     summary: "Tutor cards + per-course progress steppers, derived from real workspace state via courseProgress over the lesson files.",
     points: [],
     notes: ["listLessonFiles errors are swallowed (.catch(() => {})) — a known low-severity item, kept"],
     tests: ["Untested directly (Phase 5 debt)"] },
 
   { id: "ide-screen", label: "screens/IdeLessonScreen.tsx", sub: "workbook screen · 219 lines", path: "src/web/client/screens/IdeLessonScreen.tsx",
-    worlds: ["browser"], kind: "actions (layout + wiring)", concerns: ["chat-ui", "lesson-files"], x: 1290, y: 206,
+    worlds: ["browser"], kind: "actions (layout + wiring)", concerns: ["chat-ui", "lesson-files"], x: 1280, y: 435,
     summary: "The former 315-line god component, now layout plus wiring between three hooks. Editor choice (CodeMirror vs MDXEditor) comes from the catalog via props.",
     points: [
       "openFile / handleSelectFile / start-from-scratch — each defers to useAutosave's flush() and never proceeds past a failed write",
@@ -673,14 +688,14 @@ const NODES = [
     tests: ["Behavior pinned via the hook/reducer tests; manual browser pass recommended after UI changes"] },
 
   { id: "chat-screen", label: "screens/ChatLessonScreen.tsx", sub: "chat-only screen", path: "src/web/client/screens/ChatLessonScreen.tsx",
-    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 206,
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1510, y: 225,
     summary: "Socratic tutor's full-height conversation card. Shares scaffolding with the IDE screen through LessonScreenShell instead of hand-rolling its own AppBar + menu + confirm.",
     points: [],
     notes: [],
     tests: ["Untested directly (Phase 5 debt)"] },
 
   { id: "use-agent-chat", label: "hooks/useAgentChat.ts", sub: "conversation over the web API", path: "src/web/client/hooks/useAgentChat.ts",
-    worlds: ["browser"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 1290, y: 300,
+    worlds: ["browser"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 1280, y: 540,
     summary: "The browser counterpart of the console send loop: chunks fold through shared/stream-fold.ts into the streaming bubble and transcript, plus conversation resume. Conversation id persists in localStorage (lib/storage.ts); the transcript itself is always re-fetched from the server.",
     points: [
       "Owns the debug-mode toggle (web counterpart of /debug) — state + ref read mid-stream, so toggling applies to the reply in flight",
@@ -691,14 +706,14 @@ const NODES = [
     tests: ["Stream edge cases covered at the api.ts layer; hook untested directly"] },
 
   { id: "shell", label: "LessonScreenShell.tsx", sub: "shared screen scaffolding", path: "src/web/client/components/LessonScreenShell.tsx",
-    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 300,
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1510, y: 330,
     summary: "AppBar + back navigation + the overflow menu — the debug-mode toggle (no busy guard, applies mid-stream) and “Start from scratch” with its confirm dialog and busy guard — previously ~80 lines duplicated across both lesson screens.",
     points: [],
     notes: [],
     tests: ["Covered by usage; trivial logic"] },
 
   { id: "use-file-sync", label: "hooks/useLessonFileSync.ts", sub: "planSync (pure) + executor", path: "src/web/client/hooks/useLessonFileSync.ts",
-    worlds: ["browser"], kind: "calculations + hook", concerns: ["lesson-files"], x: 1060, y: 394,
+    worlds: ["browser"], kind: "calculations + hook", concerns: ["lesson-files"], x: 1050, y: 540,
     summary: "Keeps the editor in step with the tutor's workspace after every reply. The decision tree — open-request wins → first file → newer-and-clean → tutor-rewrote-current — is the pure planSync, pinned by a decision-table test before the extraction.",
     points: [
       "<code>planSync({files, openRequest, active, dirty})</code> → none | open | toast | refresh",
@@ -709,7 +724,7 @@ const NODES = [
     tests: ["test/web/client/planSync.test.ts — sync decision table + empty-workspace chat action switch"] },
 
   { id: "use-autosave", label: "hooks/useAutosave.ts", sub: "debounce · flush() → bool", path: "src/web/client/hooks/useAutosave.ts",
-    worlds: ["browser"], kind: "actions (hook)", concerns: ["lesson-files"], x: 1290, y: 394,
+    worlds: ["browser"], kind: "actions (hook)", concerns: ["lesson-files"], x: 1280, y: 645,
     summary: "Drives the autosave reducer with timers and writes: save 1s after typing goes quiet, one automatic retry after a failure, and a flush() whose boolean answer callers must respect.",
     points: [
       "<code>flush()</code> returns false on a failed write — the fix for the June review's silent-data-loss bug (callers no longer overwrite the editor)",
@@ -720,14 +735,14 @@ const NODES = [
     tests: ["Reducer fully tested in lib/autosave; timing paths exercised manually"] },
 
   { id: "lib-autosave", label: "lib/autosave.ts", sub: "save-state reducer (pure)", path: "src/web/client/lib/autosave.ts",
-    worlds: ["browser"], kind: "calculations", concerns: ["lesson-files"], x: 1290, y: 488,
+    worlds: ["browser"], kind: "calculations", concerns: ["lesson-files"], x: 1050, y: 645,
     summary: "The autosave lifecycle as an explicit machine: idle → unsaved → saving → saved | error. What used to be implicit across useState + three refs is now five states and five events.",
     points: ["<code>nextSaveState(state, event)</code> — note saved-with-concurrent-edit lands back in unsaved, not saved"],
     notes: [],
     tests: ["test/web/client/autosave.test.ts — full transition table"] },
 
   { id: "components", label: "client/components/*", sub: "chat panel · editors · chrome", path: "src/web/client/components/",
-    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1520, y: 394,
+    worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1510, y: 435,
     summary: "The rendering kit: chat panel/sheet with markdown, CodeMirror + MDXEditor wrappers, file tabs, mascot, toasts, app bar, options menu.",
     points: [],
     notes: [],
@@ -794,7 +809,7 @@ canvas.style.width = CANVAS_W + "px";
 canvas.style.height = CANVAS_H + "px";
 
 const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
-const POS_KEY = "acd-arch-positions-v1";
+const POS_KEY = "acd-arch-positions-v2";
 const defaults = Object.fromEntries(NODES.map((n) => [n.id, { x: n.x, y: n.y }]));
 try {
   const saved = JSON.parse(localStorage.getItem(POS_KEY) || "{}");

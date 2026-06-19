@@ -1,4 +1,4 @@
-import { agentDefinition } from "../shared/catalog";
+import { agentDefinition } from "../agents/catalog/catalog";
 import { lessonChatActions } from "../shared/lesson-actions";
 import type { AgentChoice, ConsoleAction } from "./types";
 
