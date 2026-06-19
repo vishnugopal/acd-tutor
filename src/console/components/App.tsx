@@ -2,8 +2,8 @@ import { Box, useApp } from "ink";
 import { useState } from "react";
 import { InputBar } from "./InputBar";
 import { Transcript } from "./Transcript";
-import { useChatStream } from "./useChatStream";
-import type { ConsoleAction, ReplyChunk } from "./types";
+import { useChatStream } from "../hooks/useChatStream";
+import type { ConsoleAction, ReplyChunk } from "../types";
 
 export interface AppProps {
   reply: (line: string) => AsyncIterable<ReplyChunk>;

@@ -1,6 +1,6 @@
 import { Box, Static, Text } from "ink";
 import { Markdown } from "./Markdown";
-import type { Message } from "./types";
+import type { Message } from "../types";
 
 function MessageView({ message }: { message: Message }) {
   switch (message.role) {

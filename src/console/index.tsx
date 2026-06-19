@@ -1,7 +1,7 @@
 import { render } from "ink";
 import { useEffect, useState } from "react";
-import { App } from "./App";
-import { Menu } from "./Menu";
+import { App } from "./components/App";
+import { Menu } from "./components/Menu";
 import type { AgentChoice, ConsoleAction, ConsoleOptions } from "./types";
 
 export type { AgentChoice, ConsoleAction, ConsoleOptions, ReplyChunk } from "./types";
