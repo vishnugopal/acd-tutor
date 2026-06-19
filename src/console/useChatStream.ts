@@ -21,6 +21,8 @@ export interface ChatStreamOptions {
   formatError: (err: unknown) => string;
   /** Read mid-stream, so /debug toggles apply to the reply in flight. */
   debugMode: boolean;
+  /** Notified after a reply fully settles, so callers can refresh workspace state. */
+  onReplyDone?: () => void;
 }
 
 export interface ChatStream {
@@ -42,6 +44,7 @@ export function useChatStream({
   emptyReplyMessage,
   formatError,
   debugMode,
+  onReplyDone,
 }: ChatStreamOptions): ChatStream {
   const [messages, setMessages] = useState<Message[]>(() =>
     greeting === undefined ? [] : [{ role: "info", text: greeting }],
@@ -72,6 +75,7 @@ export function useChatStream({
       append({ role: "error", text: formatError(err) });
     } finally {
       setStreamingText(null);
+      onReplyDone?.();
     }
   };
 

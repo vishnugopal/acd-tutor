@@ -414,6 +414,16 @@ const NODES = [
     notes: [],
     tests: ["test/shared/lesson-names.test.ts"] },
 
+  { id: "lesson-actions", label: "shared/lesson-actions.ts", sub: "Start + workbook action calc", path: "src/shared/lesson-actions.ts",
+    worlds: ["shared"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 1020, y: 955, w: 210,
+    summary: "The workbook chat-action rule, shared by the web IDE and the console runner: show Start until lesson files exist, then hand back the agent's normal actions.",
+    points: [
+      "<code>START_LESSON_ACTION</code> — the shared Start button",
+      "<code>lessonChatActions(files, actions)</code> — Start first, then catalog actions",
+    ],
+    notes: [],
+    tests: ["test/shared/lesson-actions.test.ts"] },
+
   /* ---------------- host ∩ flue bundle ---------------- */
   { id: "workspaces", label: "workspaces.ts", sub: "env resolution over catalog", path: "src/workspaces.ts",
     worlds: ["host", "flue"], kind: "calculations + env reads", concerns: ["identity", "lesson-files"], x: 70, y: 726,
@@ -504,8 +514,8 @@ const NODES = [
   /* ---------------- host: entries & transport ---------------- */
   { id: "main", label: "main.ts", sub: "console entry · composition", path: "src/main.ts",
     worlds: ["host"], kind: "actions (composition only)", concerns: ["wiring"], x: 446, y: 112,
-    summary: "Console composition root: start the flue server, hand AGENT_CHOICES and a createReply factory to the console. No logic of its own.",
-    points: ["Wires <code>createReply(id)</code> → a fresh AgentSession per chosen agent"],
+    summary: "Console composition root: start the flue server, hand AGENT_CHOICES, a createReply factory, and the workspace-driven action resolver to the console. No logic of its own.",
+    points: ["Wires <code>createReply(id)</code> → a fresh AgentSession per chosen agent", "Wires the shared workbook action calculator through the host workspace store"],
     notes: ["Agent lists are passed by injection here (not imported deep down) — that's what lets e2e inject tutor-faux"],
     tests: ["Composition covered by tutor e2e"] },
 
@@ -544,10 +554,17 @@ const NODES = [
   /* ---------------- host: console frontend ---------------- */
   { id: "console-index", label: "console/index.tsx", sub: "runConsole · picker → chat", path: "src/console/index.tsx",
     worlds: ["host"], kind: "actions (UI shell)", concerns: ["chat-ui", "wiring"], x: 446, y: 206,
-    summary: "Renders the agent picker (skipped for a single agent), then the chat for the chosen agent; prints the farewell after exit. Knows nothing about tutors or Flue.",
-    points: ["Takes <code>agents: AgentChoice[]</code> + <code>createReply(id)</code> — fully injected"],
+    summary: "Renders the agent picker (skipped for a single agent), then the chat for the chosen agent; prints the farewell after exit. It now also refreshes the action row from a host-supplied resolver after each reply.",
+    points: ["Takes <code>agents: AgentChoice[]</code> + <code>createReply(id)</code> — fully injected", "Optional <code>resolveActions</code> keeps workbook buttons in sync with the workspace"],
     notes: [],
     tests: ["Menu/picker behavior currently untested (Phase 5 debt, deliberate)"] },
+
+  { id: "console-actions", label: "console/actions.ts", sub: "workspace-driven action resolver", path: "src/console/actions.ts",
+    worlds: ["host"], kind: "calculations", concerns: ["lesson-files", "chat-ui"], x: 646, y: 206,
+    summary: "Host-side adapter that asks the shared lesson-action calculator for the current console buttons. Workbook agents get Start when their workspace is empty; injected/chat-only agents keep whatever actions they were handed.",
+    points: ["Uses the shared catalog to detect workbook agents, then delegates to lessonChatActions"],
+    notes: [],
+    tests: ["test/console/actions.test.ts"] },
 
   { id: "console-app", label: "console/App.tsx", sub: "slash commands + layout", path: "src/console/App.tsx",
     worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui", "streaming"], x: 446, y: 300,
@@ -558,9 +575,10 @@ const NODES = [
 
   { id: "use-chat-stream", label: "console/useChatStream.ts", sub: "send loop over the shared fold", path: "src/console/useChatStream.ts",
     worlds: ["host"], kind: "actions (hook)", concerns: ["streaming", "chat-ui"], x: 446, y: 394,
-    summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (shared/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line and error render.",
+    summary: "The console's send loop: runs the shared foldChunk/finishStream calculations (shared/stream-fold.ts) against React state, adding the FIFO queue pump, streaming line, error render, and the post-reply callback used to refresh workbook buttons.",
     points: [
       "debugMode is read through a ref so /debug applies mid-reply",
+      "onReplyDone lets the runner refresh workspace-driven actions after each turn",
     ],
     notes: [],
     tests: ["Fold covered in test/shared/stream-fold.test.ts; hook exercised via test/console/App.test.tsx"] },
@@ -643,11 +661,12 @@ const NODES = [
     notes: ["listLessonFiles errors are swallowed (.catch(() => {})) — a known low-severity item, kept"],
     tests: ["Untested directly (Phase 5 debt)"] },
 
-  { id: "ide-screen", label: "screens/IdeLessonScreen.tsx", sub: "workbook screen · 216 lines", path: "src/web/client/screens/IdeLessonScreen.tsx",
+  { id: "ide-screen", label: "screens/IdeLessonScreen.tsx", sub: "workbook screen · 219 lines", path: "src/web/client/screens/IdeLessonScreen.tsx",
     worlds: ["browser"], kind: "actions (layout + wiring)", concerns: ["chat-ui", "lesson-files"], x: 1290, y: 206,
     summary: "The former 315-line god component, now layout plus wiring between three hooks. Editor choice (CodeMirror vs MDXEditor) comes from the catalog via props.",
     points: [
       "openFile / handleSelectFile / start-from-scratch — each defers to useAutosave's flush() and never proceeds past a failed write",
+      "Chat actions come from lessonChatActions: Start before the first lesson file exists, then the agent's normal actions",
       "Save status line renders the reducer's SaveState directly",
     ],
     notes: ["Both June-review save bugs were here; the fixes live in the hooks below, and this screen just respects flush()'s answer"],
@@ -683,10 +702,11 @@ const NODES = [
     summary: "Keeps the editor in step with the tutor's workspace after every reply. The decision tree — open-request wins → first file → newer-and-clean → tutor-rewrote-current — is the pure planSync, pinned by a decision-table test before the extraction.",
     points: [
       "<code>planSync({files, openRequest, active, dirty})</code> → none | open | toast | refresh",
+      "<code>lessonChatActions(files, actions)</code> from shared/lesson-actions → Start while the workspace is empty, then catalog actions",
       "Executor flushes before any switch and stays put (with a toast) if the flush fails",
     ],
     notes: ["Never yanks a dirty editor: a newer lesson mid-edit becomes a toast, not a switch"],
-    tests: ["test/web/client/planSync.test.ts — full decision table pinning pre-refactor behavior"] },
+    tests: ["test/web/client/planSync.test.ts — sync decision table + empty-workspace chat action switch"] },
 
   { id: "use-autosave", label: "hooks/useAutosave.ts", sub: "debounce · flush() → bool", path: "src/web/client/hooks/useAutosave.ts",
     worlds: ["browser"], kind: "actions (hook)", concerns: ["lesson-files"], x: 1290, y: 394,
@@ -726,8 +746,9 @@ const EDGES = [
   ["client-api", "chunks"], ["client-api", "client-types"],
   ["web-server", "catalog"], ["web-server", "chunks"],
   ["lesson-files", "open-request"], ["lesson-files", "lesson-names"],
+  ["lesson-actions", "catalog"],
   ["tools", "lesson-files"],
-  ["use-file-sync", "lesson-names"],
+  ["use-file-sync", "lesson-names"], ["use-file-sync", "lesson-actions"],
   ["home-screen", "lesson-names"],
 
   ["stubs", "profiles"],
@@ -738,9 +759,10 @@ const EDGES = [
   ["agent-io", "flue-server", "runtime", "HTTP · SSE invoke"],
   ["lesson-files", "scratch", "fs", "the only disk path"],
 
-  ["main", "registry"], ["main", "runner"], ["main", "agent-io"], ["main", "console-index"],
+  ["main", "registry"], ["main", "runner"], ["main", "agent-io"], ["main", "console-index"], ["main", "console-actions"],
   ["web-main", "registry"], ["web-main", "runner"], ["web-main", "workspaces"], ["web-main", "web-server"],
 
+  ["console-actions", "catalog"], ["console-actions", "lesson-actions"],
   ["console-index", "console-app"], ["console-index", "console-widgets"], ["console-index", "console-types"],
   ["console-app", "use-chat-stream"], ["console-app", "console-widgets"], ["console-app", "console-types"],
   ["use-chat-stream", "console-types"], ["use-chat-stream", "stream-fold"],

@@ -12,6 +12,7 @@ export interface AppProps {
   thinkingIndicator: string;
   formatError: (err: unknown) => string;
   actions: ConsoleAction[];
+  onReplyDone?: () => void;
 }
 
 /**
@@ -27,6 +28,7 @@ export function App({
   thinkingIndicator,
   formatError,
   actions,
+  onReplyDone,
 }: AppProps) {
   const { exit } = useApp();
   const [debugMode, setDebugMode] = useState(false);
@@ -36,6 +38,7 @@ export function App({
     emptyReplyMessage,
     formatError,
     debugMode,
+    onReplyDone,
   });
 
   // Slash commands act immediately, even while a reply is streaming;
