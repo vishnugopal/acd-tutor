@@ -181,6 +181,28 @@
   margin: 10px 0;
 }
 
+.diagram-svg-compact svg {
+  max-width: min(680px, 100%);
+  height: auto;
+}
+
+.diagram-svg-expanded svg {
+  width: min(920px, 100%);
+  max-width: 100%;
+  height: auto;
+}
+
+.diagram-msg .node rect,
+.diagram-msg .node polygon,
+.diagram-msg .node circle,
+.diagram-msg .node ellipse,
+.diagram-modal .node rect,
+.diagram-modal .node polygon,
+.diagram-modal .node circle,
+.diagram-modal .node ellipse {
+  rx: 6px;
+}
+
 /* ============ CodeMirror internals (third-party DOM, stays CSS) ============ */
 .editor-host .cm-editor {
   height: 100%;

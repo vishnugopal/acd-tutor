@@ -13,6 +13,32 @@ describe("parseStreamFrame", () => {
     });
   });
 
+  test("parses diagram chunks", () => {
+    expect(
+      parseStreamFrame(
+        JSON.stringify({
+          kind: "diagram",
+          diagram: {
+            title: "Levels",
+            caption: "Top calls domain.",
+            altText: "A top-level function calls a domain helper.",
+            mermaid: "flowchart TD\n  A --> B",
+            terminal: "A -> B",
+          },
+        }),
+      ),
+    ).toEqual({
+      kind: "diagram",
+      diagram: {
+        title: "Levels",
+        caption: "Top calls domain.",
+        altText: "A top-level function calls a domain helper.",
+        mermaid: "flowchart TD\n  A --> B",
+        terminal: "A -> B",
+      },
+    });
+  });
+
   test("parses the terminal frames", () => {
     expect(parseStreamFrame('{"kind":"done"}')).toEqual({ kind: "done" });
     expect(parseStreamFrame('{"kind":"error","text":"boom"}')).toEqual({
@@ -36,5 +62,7 @@ describe("parseStreamFrame", () => {
     expect(parseStreamFrame('{"kind":"text"}')).toBeNull();
     expect(parseStreamFrame('{"kind":"text","text":7}')).toBeNull();
     expect(parseStreamFrame('{"kind":"error","text":null}')).toBeNull();
+    expect(parseStreamFrame('{"kind":"diagram"}')).toBeNull();
+    expect(parseStreamFrame('{"kind":"diagram","diagram":{"title":"x"}}')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { AgentAction, AgentPresentation } from "../agents/catalog/catalog";
-import type { AgentChunk } from "../agents/types/chunks";
+import type { AgentChunk, AgentDiagram } from "../agents/types/chunks";
 
 /** A persistent button rendered above the input line; pressing it sends `message`. */
 export type ConsoleAction = AgentAction;
@@ -36,6 +36,7 @@ export interface ConsoleOptions {
 
 /** One completed transcript entry. */
 export interface Message {
-  role: "user" | "tutor" | "error" | "info" | "debug";
-  text: string;
+  role: "user" | "tutor" | "error" | "info" | "debug" | "diagram";
+  text?: string;
+  diagram?: AgentDiagram;
 }

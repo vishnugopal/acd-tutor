@@ -90,6 +90,28 @@ describe("App", () => {
     expect(lastFrame()).toContain("→ readFile(x)");
   });
 
+  test("diagram chunks render with terminal output", async () => {
+    const { stdin, lastFrame } = renderApp({
+      reply: scriptedReply(() => [
+        {
+          kind: "diagram",
+          diagram: {
+            title: "Function levels",
+            caption: "Top calls domain.",
+            altText: "A top-level function calls a domain helper.",
+            mermaid: "flowchart TD\n  A --> B",
+            terminal: "A -> B",
+          },
+        },
+      ]),
+    });
+    await submit(stdin, "show levels");
+    const frame = lastFrame()!;
+    expect(frame).toContain("Function levels");
+    expect(frame).toContain("Top calls domain.");
+    expect(frame).toContain("A -> B");
+  });
+
   test("a thrown reply renders an error message", async () => {
     const { stdin, lastFrame } = renderApp({
       reply: () =>

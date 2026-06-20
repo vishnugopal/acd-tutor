@@ -47,6 +47,7 @@ export interface AgentWorkspace {
 export type AgentId =
   | "acd-tutor"
   | "argumentative-essay-tutor"
+  | "stratified-design-tutor"
   | "socratic-tutor";
 
 export interface AgentDefinition {
@@ -145,6 +146,40 @@ you the answer; I'll help you find it.
 `,
     farewell: "Goodbye! Keep asking great questions!",
     actions: [],
+  },
+  "stratified-design-tutor": {
+    id: "stratified-design-tutor",
+    label: "Stratified Design Tutor",
+    description:
+      "Learn to organize code into clear levels of meaning, from Grokking Simplicity chapters 8-9.",
+    greeting: `Hi! Welcome to the Stratified Design tutor!
+
+We'll work on organizing functions into clear levels: high-level orchestration,
+mid-level concepts, and low-level details. Say "let's start" and I'll set up
+your first lesson — or pick up where you left off.
+`,
+    farewell: "Goodbye! Keep your layers clear!",
+    actions: [CHECK_MY_WORK],
+    workspace: {
+      dirEnvVar: "STRATIFIED_DESIGN_TUTOR_SCRATCH_DIR",
+      defaultDir: "/tmp/stratified-design-tutor/scratch",
+      editor: "code",
+    },
+    course: {
+      title: "Stratified Design — course",
+      steps: [
+        { number: 1, label: "Levels" },
+        { number: 2, label: "Call Graph" },
+        { number: 3, label: "Leaks" },
+        { number: 4, label: "Wrap" },
+        { number: 5, label: "Split" },
+        { number: 6, label: "One Down" },
+        { number: 7, label: "Judgment" },
+        { number: 8, label: "API" },
+        { number: 9, label: "Move" },
+        { number: 10, label: "Capstone" },
+      ],
+    },
   },
 } satisfies Record<AgentId, AgentDefinition>;
 

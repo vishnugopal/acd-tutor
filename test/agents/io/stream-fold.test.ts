@@ -43,6 +43,26 @@ describe("foldChunk", () => {
     ]);
     expect(folded.state).toEqual({ text: "", replied: true });
   });
+
+  test("diagram chunks flush accumulated prose first", () => {
+    const diagram = {
+      title: "Levels",
+      caption: "Top calls domain.",
+      altText: "A top-level function calls a domain helper.",
+      mermaid: "flowchart TD\n  A --> B",
+      terminal: "A -> B",
+    };
+    const folded = foldChunk(
+      { text: "look here", replied: false },
+      { kind: "diagram", diagram },
+      false,
+    );
+    expect(folded.append).toEqual([
+      { role: "tutor", text: "look here" },
+      { role: "diagram", diagram },
+    ]);
+    expect(folded.state).toEqual({ text: "", replied: true });
+  });
 });
 
 describe("finishStream", () => {

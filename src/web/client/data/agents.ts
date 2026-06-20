@@ -20,6 +20,7 @@ export interface AgentIcon {
 const AGENT_ICONS = {
   "acd-tutor": { icon: "🕵️", iconBg: "bg-cy-amber-soft" },
   "argumentative-essay-tutor": { icon: "📝", iconBg: "bg-[#e5edff]" },
+  "stratified-design-tutor": { icon: "🧱", iconBg: "bg-[#e6f5ee]" },
   "socratic-tutor": { icon: "💭", iconBg: "bg-[#ffe5d6]" },
 } satisfies Record<AgentId, AgentIcon>;
 

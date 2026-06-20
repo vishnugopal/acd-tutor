@@ -2,25 +2,27 @@ import { Box, Static, Text } from "ink";
 import { Markdown } from "./Markdown";
 import type { Message } from "../types";
 
+const textOf = (message: Message): string => message.text ?? "";
+
 function MessageView({ message }: { message: Message }) {
   switch (message.role) {
     case "user":
       return (
         <Box marginBottom={1}>
           <Text color="cyan">{"› "}</Text>
-          <Text color="cyan">{message.text}</Text>
+          <Text color="cyan">{textOf(message)}</Text>
         </Box>
       );
     case "error":
       return (
         <Box marginBottom={1}>
-          <Text color="red">{message.text}</Text>
+          <Text color="red">{textOf(message)}</Text>
         </Box>
       );
     case "info":
       return (
         <Box marginBottom={1}>
-          <Text dimColor>{message.text}</Text>
+          <Text dimColor>{textOf(message)}</Text>
         </Box>
       );
     case "debug":
@@ -28,14 +30,26 @@ function MessageView({ message }: { message: Message }) {
       return (
         <Box>
           <Text color="yellow" dimColor>
-            {message.text}
+            {textOf(message)}
           </Text>
         </Box>
       );
+    case "diagram": {
+      const diagram = message.diagram;
+      if (!diagram) return null;
+      return (
+        <Box flexDirection="column" marginBottom={1}>
+          <Text bold>{diagram.title}</Text>
+          <Text dimColor>{diagram.caption}</Text>
+          <Text>{diagram.terminal ?? diagram.mermaid}</Text>
+          <Text dimColor>{diagram.altText}</Text>
+        </Box>
+      );
+    }
     default:
       return (
         <Box marginBottom={1}>
-          <Markdown>{message.text}</Markdown>
+          <Markdown>{textOf(message)}</Markdown>
         </Box>
       );
   }

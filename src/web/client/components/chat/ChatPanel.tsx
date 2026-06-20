@@ -1,6 +1,19 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
+import { createPortal } from "react-dom";
+import mermaid from "mermaid";
 import type { AgentAction, ChatMessage } from "../../types";
 import { Markdown } from "./Markdown";
+import type { AgentDiagram } from "../../../../agents/types/chunks";
 
 const MSG_BASE =
   "msg max-w-[86%] rounded-[15px] px-[14px] py-[10px] text-[14.5px] leading-normal animate-[fadeup_.25s_ease_both]";
@@ -28,6 +41,9 @@ function Message({
       </div>
     );
   }
+  if (message.role === "diagram" && message.diagram) {
+    return <DiagramMessage diagram={message.diagram} />;
+  }
   if (message.role === "debug") {
     return (
       <div className="msg debug max-w-[92%] self-start font-mono text-[12px] whitespace-pre-wrap text-muted animate-[fadeup_.25s_ease_both]">
@@ -42,11 +58,148 @@ function Message({
       data-name={isTutor ? tutorName : undefined}
     >
       {isTutor ? (
-        <Markdown text={message.text} />
+        <Markdown text={message.text ?? ""} />
       ) : (
         <span className="whitespace-pre-wrap">{message.text}</span>
       )}
     </div>
+  );
+}
+
+mermaid.initialize({
+  startOnLoad: false,
+  securityLevel: "strict",
+  theme: "base",
+  themeVariables: {
+    primaryColor: "#fff7e0",
+    primaryBorderColor: "#ffb600",
+    primaryTextColor: "#1d1a10",
+    lineColor: "#2f4f4f",
+    secondaryColor: "#fffdf6",
+    tertiaryColor: "#fff1c7",
+    fontFamily: "Outfit, sans-serif",
+  },
+});
+
+function DiagramMessage({ diagram }: { diagram: AgentDiagram }) {
+  const [expanded, setExpanded] = useState(false);
+
+  function openModal() {
+    setExpanded(true);
+  }
+
+  function closeModal() {
+    setExpanded(false);
+  }
+
+  return (
+    <>
+      <figure
+        className="diagram-msg max-w-[92%] cursor-zoom-in self-start rounded-[8px] border border-cy-amber-soft bg-code-bg p-3 animate-[fadeup_.25s_ease_both]"
+        onClick={openModal}
+      >
+        <DiagramCaption diagram={diagram} />
+        <MermaidDiagram diagram={diagram} compact />
+      </figure>
+      {expanded && <DiagramModal diagram={diagram} onClose={closeModal} />}
+    </>
+  );
+}
+
+function DiagramCaption({ diagram }: { diagram: AgentDiagram }) {
+  return (
+    <figcaption className="mb-2">
+      <div className="text-[12px] font-extrabold text-cy-amber-dark">
+        {diagram.title}
+      </div>
+      <div className="text-[12.5px] text-muted">{diagram.caption}</div>
+    </figcaption>
+  );
+}
+
+function MermaidDiagram({
+  diagram,
+  compact = false,
+}: {
+  diagram: AgentDiagram;
+  compact?: boolean;
+}) {
+  const rawId = useId();
+  const renderId = useMemo(
+    () => `mermaid-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`,
+    [rawId],
+  );
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    mermaid
+      .render(renderId, diagram.mermaid)
+      .then(({ svg }) => {
+        if (cancelled || !hostRef.current) return;
+        hostRef.current.innerHTML = svg;
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [diagram.mermaid, renderId]);
+
+  return error ? (
+    <pre className="overflow-x-auto rounded-md border border-line bg-white/70 p-2 font-mono text-[11px] whitespace-pre text-muted">
+      {diagram.mermaid}
+    </pre>
+  ) : (
+    <div
+      ref={hostRef}
+      className={`diagram-svg overflow-x-auto ${compact ? "diagram-svg-compact" : "diagram-svg-expanded"}`}
+      role="img"
+      aria-label={diagram.altText}
+    />
+  );
+}
+
+function DiagramModal({
+  diagram,
+  onClose,
+}: {
+  diagram: AgentDiagram;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  function stopPropagation(e: MouseEvent) {
+    e.stopPropagation();
+  }
+
+  return (
+    createPortal(
+      <div
+        className="fixed inset-0 z-[999] flex items-center justify-center bg-ink/55 p-4 backdrop-blur-[2px]"
+        onClick={onClose}
+        role="presentation"
+      >
+        <figure
+          className="diagram-modal max-h-[90vh] w-[min(1120px,94vw)] overflow-auto rounded-[8px] border border-cy-amber bg-code-bg p-5 shadow-panel"
+          onClick={stopPropagation}
+        >
+          <DiagramCaption diagram={diagram} />
+          <MermaidDiagram diagram={diagram} />
+        </figure>
+      </div>,
+      document.body,
+    )
   );
 }
 
@@ -87,6 +240,7 @@ export function ChatPanel({
 }) {
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const busy = streamingText !== null;
 
   useEffect(() => {
@@ -99,6 +253,19 @@ export function ChatPanel({
     if (!draft.trim() || busy) return;
     onSend(draft);
     setDraft("");
+  }
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }, [draft]);
+
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    e.preventDefault();
+    e.currentTarget.form?.requestSubmit();
   }
 
   return (
@@ -137,18 +304,21 @@ export function ChatPanel({
       )}
 
       <form
-        className="chat-form flex gap-2 border-t border-line px-[14px] pt-[10px] pb-[calc(12px+env(safe-area-inset-bottom))]"
+        className="chat-form flex items-end gap-2 border-t border-line px-[14px] pt-[10px] pb-[calc(12px+env(safe-area-inset-bottom))]"
         onSubmit={handleSubmit}
       >
-        <input
-          className="min-w-0 flex-1 rounded-xl border-[1.5px] border-line bg-code-bg px-[14px] py-[11px] text-[15px] text-ink outline-none transition-colors duration-150 focus:border-cy-amber"
+        <textarea
+          ref={inputRef}
+          className="max-h-36 min-h-[46px] min-w-0 flex-1 resize-none overflow-y-auto rounded-xl border-[1.5px] border-line bg-code-bg px-[14px] py-[11px] text-[15px] leading-[1.35] whitespace-pre-wrap text-ink outline-none transition-colors duration-150 focus:border-cy-amber"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={busy ? `${tutorName} is thinking…` : placeholder}
           autoComplete="off"
+          rows={1}
         />
         <button
-          className="cursor-pointer rounded-xl bg-cy-amber px-[18px] text-sm font-extrabold text-ink active:scale-95 disabled:cursor-default disabled:opacity-60"
+          className="min-h-[46px] cursor-pointer rounded-xl bg-cy-amber px-[18px] text-sm font-extrabold text-ink active:scale-95 disabled:cursor-default disabled:opacity-60"
           type="submit"
           disabled={busy}
         >
