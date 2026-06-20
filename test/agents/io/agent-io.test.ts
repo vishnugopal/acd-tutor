@@ -168,6 +168,32 @@ describe("createAgentSession", () => {
     expect(chunks).toEqual([{ kind: "text", text: "ok" }]);
   });
 
+  test("yields Mermaid tool results as diagram chunks", async () => {
+    const diagram = {
+      title: "Levels",
+      caption: "Top calls domain.",
+      altText: "A top-level function calls a domain helper.",
+      mermaid: "flowchart TD\n  A --> B",
+      terminal: "A -> B",
+    };
+    const { client } = fakeClient([
+      ev.toolCall({
+        toolName: "showDiagram",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ type: "mermaid-diagram", diagram }),
+            },
+          ],
+        },
+      }),
+    ]);
+    const session = createAgentSession(client, "main");
+    const chunks = await collect(session.send({ message: "hi" }));
+    expect(chunks).toEqual([{ kind: "diagram", diagram }]);
+  });
+
   test("defaults instanceId to `${agent}_<uuid>`", () => {
     const { client } = fakeClient([]);
     const session = createAgentSession(client, "main");

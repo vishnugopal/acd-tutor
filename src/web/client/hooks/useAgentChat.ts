@@ -10,6 +10,7 @@ import {
   loadConversationId,
   saveConversationId,
 } from "../lib/storage";
+import type { AgentDiagram } from "../../../agents/types/chunks";
 import type { ChatMessage } from "../types";
 
 /**
@@ -60,6 +61,22 @@ const msg = (role: ChatMessage["role"], text: string): ChatMessage => ({
   role,
   text,
 });
+
+const diagramMsg = (diagram: AgentDiagram): ChatMessage => ({
+  id: nextId++,
+  role: "diagram",
+  diagram,
+});
+
+function foldedMsg(m: {
+  role: ChatMessage["role"];
+  text?: string;
+  diagram?: AgentDiagram;
+}): ChatMessage {
+  return m.role === "diagram" && m.diagram
+    ? diagramMsg(m.diagram)
+    : msg(m.role, m.text ?? "");
+}
 
 export function useAgentChat({
   agentId,
@@ -164,7 +181,7 @@ export function useAgentChat({
             if (folded.append.length > 0) {
               setMessages((prev) => [
                 ...prev,
-                ...folded.append.map((m) => msg(m.role, m.text)),
+                ...folded.append.map(foldedMsg),
               ]);
             }
             setStreamingText(state.text);
@@ -175,7 +192,7 @@ export function useAgentChat({
             { ...state, text: state.text.trim() },
             EMPTY_REPLY_MESSAGE,
           )) {
-            append(msg(m.role, m.text));
+            append(msg(m.role, m.text ?? ""));
           }
           onReplyDoneRef.current?.();
         } catch (err) {

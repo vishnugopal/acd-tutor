@@ -1,5 +1,6 @@
 import type { DirectAgentPayload, FlueClient, FlueEvent } from "@flue/sdk";
 import type { AgentChunk } from "../types/chunks";
+import { parseMermaidDiagramToolResult } from "./mermaid-tools";
 
 export type { AgentChunk };
 
@@ -85,6 +86,13 @@ export function createAgentSession(
         if (event.type === "text_delta") {
           yield { kind: "text", text: event.text };
           continue;
+        }
+        if (event.type === "tool_call") {
+          const diagram = parseMermaidDiagramToolResult(event.result);
+          if (diagram !== null) {
+            yield { kind: "diagram", diagram: diagram.diagram };
+            continue;
+          }
         }
         const line = formatDebugEvent(event);
         if (line !== null) yield { kind: "debug", text: line };

@@ -344,7 +344,7 @@
   <div class="drawer-body" id="drawer-body"></div>
 </aside>
 
-<footer>acd-tutor architecture map · updated 2026-06-19 · grouped by code layer (agent · console · web · shared), compilation world as the secondary boundary · single file, zero dependencies</footer>
+<footer>acd-tutor architecture map · updated 2026-06-20 · grouped by code layer (agent · console · web · shared), compilation world as the secondary boundary · single file, zero dependencies</footer>
 
 <script>
 "use strict";
@@ -398,9 +398,10 @@ const NODES = [
 
   { id: "chunks", label: "agents/types/chunks.ts", sub: "streaming vocabulary", path: "src/agents/types/chunks.ts",
     worlds: ["shared"], kind: "data + calculations", concerns: ["streaming"], x: 325, y: 230, w: 230,
-    summary: "The streaming chunk, defined once. Previously this exact shape existed three times (agent-io, console, web client), with a no-op converter papering over the seam.",
+    summary: "The streaming chunk, defined once. Text, debug, and Mermaid diagram chunks all cross the same agent → server → frontend path.",
     points: [
-      "<code>AgentChunk</code> = text | debug — what agent-io yields",
+      "<code>AgentChunk</code> = text | debug | diagram — what agent-io yields",
+      "<code>AgentDiagram</code> carries title, caption, alt text, Mermaid source, and terminal fallback output",
       "<code>StreamFrame</code> = AgentChunk ∪ done | error — what crosses the SSE wire",
       "<code>parseStreamFrame(raw)</code> → frame or <code>null</code> for malformed input — skip, don't crash",
     ],
@@ -409,11 +410,11 @@ const NODES = [
 
   { id: "stream-fold", label: "agents/io/stream-fold.ts", sub: "reply-stream fold", path: "src/agents/io/stream-fold.ts",
     worlds: ["shared"], kind: "calculations", concerns: ["streaming", "chat-ui"], x: 325, y: 670, w: 230,
-    summary: "The reply-stream fold, shared by the console and web send loops: visible debug lines flush accumulated prose first so the transcript stays chronological; hidden debug lines fold away entirely.",
+    summary: "The reply-stream fold, shared by the console and web send loops: visible debug lines and diagrams flush accumulated prose first so the transcript stays chronological; hidden debug lines fold away entirely.",
     points: [
       "<code>foldChunk(state, chunk, debugMode)</code> → { state, append } — trivially unit-testable",
       "<code>finishStream</code> — remaining prose, or the empty-reply message",
-      "<code>FoldedMessage</code> roles (tutor | debug | info) are assignable to both frontends' message shapes",
+      "<code>FoldedMessage</code> roles (tutor | debug | info | diagram) are assignable to both frontends' message shapes",
     ],
     notes: [],
     tests: ["test/agents/io/stream-fold.test.ts — fold + finish decision tables"] },
@@ -475,6 +476,17 @@ const NODES = [
     notes: ["Tool descriptions and sentinel strings are part of the prompt — do not rename them casually; the tutors' behavior depends on them"],
     tests: ["test/agents/io/tools.test.ts — sentinel mapping per tool, web-mode signal write"] },
 
+  { id: "mermaid-tools", label: "agents/io/mermaid-tools.ts", sub: "Mermaid diagram tool", path: "src/agents/io/mermaid-tools.ts",
+    worlds: ["flue", "host"], kind: "actions + calculations", concerns: ["streaming", "chat-ui"], x: 55, y: 665, w: 220,
+    summary: "Model-callable showDiagram tool for stratified design diagrams. Mermaid source is validated, rendered through the installed mermkit CLI for console fallback, and returned as a JSON marker that agent-io turns into a diagram chunk.",
+    points: [
+      "<code>showDiagram({ title, caption, altText, mermaid })</code>",
+      "Validator allows flowchart/graph/sequenceDiagram and rejects directives, HTML, click/href callbacks, and oversized source",
+      "Default renderer command is <code>bunx --bun mermkit</code>",
+    ],
+    notes: ["The web client renders Mermaid from source with the mermaid package; raw SVG never travels through Markdown"],
+    tests: ["test/agents/io/mermaid-tools.test.ts — validator + marker guard"] },
+
   { id: "open-request", label: "shared/open-request.ts", sub: "tool ⇄ browser-editor contract", path: "src/shared/open-request.ts",
     worlds: ["host", "flue"], kind: "data", concerns: ["lesson-files"], x: 920, y: 905,
     summary: "The contract between the agent's openFile tool (web mode) and the web editor: a hidden dotfile in the scratch dir, consumed once by the client after each reply.",
@@ -490,7 +502,7 @@ const NODES = [
     tests: ["e2e suites point this at mkdtemp() dirs"] },
 
   /* ---------------- flue build world ---------------- */
-  { id: "stubs", label: "agents/<id>.ts ×3", sub: "Flue agent stubs", path: "src/agents/{acd-tutor,argumentative-essay-tutor,socratic-tutor}.ts",
+  { id: "stubs", label: "agents/<id>.ts ×4", sub: "Flue agent stubs", path: "src/agents/{acd-tutor,argumentative-essay-tutor,stratified-design-tutor,socratic-tutor}.ts",
     worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 55, y: 120,
     summary: "16-line stubs binding model + sandbox + profile. The filename IS the agent id — Flue discovers one agent per top-level file, which is why these can't be generated from the catalog.",
     points: [
@@ -499,9 +511,9 @@ const NODES = [
     ],
     notes: ["Adding an agent = catalog entry (compile-checked) + this trio (test-checked). The catalog test names exactly what's missing"],
     tests: ["test/agents/catalog/catalog.test.ts — filesystem consistency"],
-    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
+    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "stratified-design-tutor.ts", "socratic-tutor.ts"] },
 
-  { id: "profiles", label: "profiles/<id>.ts ×3", sub: "instructions · skills · tools", path: "src/agents/profiles/*.ts",
+  { id: "profiles", label: "profiles/<id>.ts ×4", sub: "instructions · skills · tools", path: "src/agents/profiles/*.ts",
     worlds: ["flue"], kind: "data (wiring)", concerns: ["identity", "wiring"], x: 55, y: 230,
     summary: "Everything an agent is, minus the model: instructions, its SKILL.md, and (for workbook tutors) the lesson-file tools wired to its workspace.",
     points: [
@@ -510,9 +522,9 @@ const NODES = [
     ],
     notes: ["The skill import only resolves inside flue build — importing a profile from host code breaks `bun src/console/main.ts`. This is the hard wall the layering respects"],
     tests: ["Exercised end-to-end by the faux-agent e2e build"],
-    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "socratic-tutor.ts"] },
+    files: ["acd-tutor.ts", "argumentative-essay-tutor.ts", "stratified-design-tutor.ts", "socratic-tutor.ts"] },
 
-  { id: "skills", label: "skills/<id>/ ×3", sub: "SKILL.md + references", path: "src/skills/*/",
+  { id: "skills", label: "skills/<id>/ ×4", sub: "SKILL.md + references", path: "src/skills/*/",
     worlds: ["flue"], kind: "data (pedagogy)", concerns: ["identity"], x: 55, y: 340,
     summary: "The tutors' actual teaching behavior. Behavior changes belong here, not in the frontends — the code on this map is deliberately agnostic about what is taught.",
     points: ["SKILL.md per tutor + reference docs (concept banks, exercise banks, question patterns)"],
@@ -557,14 +569,14 @@ const NODES = [
 
   { id: "agent-io", label: "agents/io/agent-io.ts", sub: "SSE → AsyncIterable<AgentChunk>", path: "src/agents/io/agent-io.ts",
     worlds: ["host"], kind: "actions + calculations", concerns: ["streaming"], x: 325, y: 560,
-    summary: "Transport only: pins an agent + conversation instance over @flue/sdk's streaming invoke and yields the shared AgentChunk type. No printing, no prompting.",
+    summary: "Transport only: pins an agent + conversation instance over @flue/sdk's streaming invoke and yields the shared AgentChunk type. It also translates showDiagram's JSON tool result into a diagram chunk.",
     points: [
       "<code>createAgentSession(client, agent, instanceId?, hooks?)</code>",
       "<code>formatDebugEvent</code> (calc) — one concise line per tool call / turn / log",
       "hooks.onEvent — the web server captures agent_end for history replay",
     ],
     notes: ["Re-exports AgentChunk from agents/types/chunks for compatibility — the type itself no longer lives here"],
-    tests: ["test/agents/io/agent-io.test.ts — truncate/formatDebugEvent via __test__, streaming via fixtures"] },
+    tests: ["test/agents/io/agent-io.test.ts — truncate/formatDebugEvent via __test__, streaming + diagram tool-result translation via fixtures"] },
 
   /* ---------------- host: console frontend ---------------- */
   { id: "console-index", label: "console/index.tsx", sub: "runConsole · picker → chat", path: "src/console/index.tsx",
@@ -607,7 +619,7 @@ const NODES = [
 
   { id: "console-widgets", label: "components/{InputBar,Transcript,…}", sub: "Ink widgets", path: "src/console/components/*.tsx",
     worlds: ["host"], kind: "actions (UI)", concerns: ["chat-ui"], x: 810, y: 340,
-    summary: "The Ink rendering kit: input with word-jump editing, transcript with markdown, menu, spinner.",
+    summary: "The Ink rendering kit: input with word-jump editing, transcript with markdown and Mermaid terminal output, menu, spinner.",
     points: ["TextInput exposes wordStart/wordEnd via __test__"],
     notes: [],
     tests: ["test/console/components/TextInput.test.ts; InputBar/Transcript/Menu untested (Phase 5 debt, deliberate)"],
@@ -743,7 +755,7 @@ const NODES = [
 
   { id: "components", label: "client/components/*", sub: "chat panel · editors · chrome", path: "src/web/client/components/",
     worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1510, y: 435,
-    summary: "The rendering kit: chat panel/sheet with markdown, CodeMirror + MDXEditor wrappers, file tabs, mascot, toasts, app bar, options menu.",
+    summary: "The rendering kit: chat panel/sheet with markdown and Mermaid diagrams, CodeMirror + MDXEditor wrappers, file tabs, mascot, toasts, app bar, options menu.",
     points: [],
     notes: [],
     tests: ["Untested directly (Phase 5 debt, deliberate)"],
@@ -763,15 +775,17 @@ const EDGES = [
   ["lesson-files", "open-request"], ["lesson-files", "lesson-names"],
   ["lesson-actions", "catalog"],
   ["tools", "lesson-files"],
+  ["mermaid-tools", "chunks"],
   ["use-file-sync", "lesson-names"], ["use-file-sync", "lesson-actions"],
   ["home-screen", "lesson-names"],
 
   ["stubs", "profiles"],
-  ["profiles", "skills"], ["profiles", "tools"], ["profiles", "workspaces"],
+  ["profiles", "skills"], ["profiles", "tools"], ["profiles", "mermaid-tools"], ["profiles", "workspaces"],
   ["stubs", "flue-server", "build", "bundled"],
 
   ["runner", "flue-server", "runtime", "build · spawn · poll"],
   ["agent-io", "flue-server", "runtime", "HTTP · SSE invoke"],
+  ["agent-io", "mermaid-tools"],
   ["lesson-files", "scratch", "fs", "the only disk path"],
 
   ["main", "registry"], ["main", "runner"], ["main", "agent-io"], ["main", "console-index"], ["main", "console-actions"],
@@ -781,6 +795,7 @@ const EDGES = [
   ["console-index", "console-app"], ["console-index", "console-widgets"], ["console-index", "console-types"],
   ["console-app", "use-chat-stream"], ["console-app", "console-widgets"], ["console-app", "console-types"],
   ["use-chat-stream", "console-types"], ["use-chat-stream", "stream-fold"],
+  ["console-widgets", "chunks"],
   ["stream-fold", "chunks"],
 
   ["web-server", "agent-io"], ["web-server", "lesson-files"], ["web-server", "web-history"],
@@ -794,6 +809,7 @@ const EDGES = [
   ["ide-screen", "use-file-sync"], ["ide-screen", "shell"], ["ide-screen", "components"],
   ["chat-screen", "use-agent-chat"], ["chat-screen", "shell"], ["chat-screen", "components"],
   ["use-agent-chat", "client-api"], ["use-agent-chat", "stream-fold"],
+  ["components", "chunks"],
   ["use-autosave", "client-api"], ["use-autosave", "lib-autosave"],
   ["use-file-sync", "client-api"],
   ["shell", "components"],

@@ -36,3 +36,7 @@ export const WORKSPACES: Record<string, string> = Object.fromEntries(
 export const ACD_SCRATCH_DIR = workspaceDir("acd-tutor")!;
 
 export const ESSAY_SCRATCH_DIR = workspaceDir("argumentative-essay-tutor")!;
+
+export const STRATIFIED_DESIGN_SCRATCH_DIR = workspaceDir(
+  "stratified-design-tutor",
+)!;

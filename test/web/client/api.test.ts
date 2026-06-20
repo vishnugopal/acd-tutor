@@ -41,12 +41,23 @@ describe("streamReply", () => {
     mockSse(
       'data: {"kind":"text","text":"Hel"}\n\n' +
         'data: {"kind":"debug","text":"→ tool()"}\n\n' +
+        'data: {"kind":"diagram","diagram":{"title":"Levels","caption":"Top calls domain.","altText":"A top-level function calls a domain helper.","mermaid":"flowchart TD\\n  A --> B","terminal":"A -> B"}}\n\n' +
         'data: {"kind":"text","text":"lo"}\n\n' +
         'data: {"kind":"done"}\n\n',
     );
     expect(await collect()).toEqual([
       { kind: "text", text: "Hel" },
       { kind: "debug", text: "→ tool()" },
+      {
+        kind: "diagram",
+        diagram: {
+          title: "Levels",
+          caption: "Top calls domain.",
+          altText: "A top-level function calls a domain helper.",
+          mermaid: "flowchart TD\n  A --> B",
+          terminal: "A -> B",
+        },
+      },
       { kind: "text", text: "lo" },
     ]);
   });

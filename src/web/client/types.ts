@@ -1,5 +1,5 @@
 import type { AgentAction, AgentPresentation } from "../../agents/catalog/catalog";
-import type { AgentChunk } from "../../agents/types/chunks";
+import type { AgentChunk, AgentDiagram } from "../../agents/types/chunks";
 
 export type { AgentAction };
 
@@ -9,12 +9,13 @@ export type AgentInfo = AgentPresentation;
 /** One streamed chunk of a tutor reply (the shared chunk vocabulary). */
 export type ReplyChunk = AgentChunk;
 
-export type ChatRole = "user" | "tutor" | "info" | "debug";
+export type ChatRole = "user" | "tutor" | "info" | "debug" | "diagram";
 
 export interface ChatMessage {
   id: number;
   role: ChatRole;
-  text: string;
+  text?: string;
+  diagram?: AgentDiagram;
 }
 
 export type MascotMood = "idle" | "cheer" | "think";

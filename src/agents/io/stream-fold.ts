@@ -1,4 +1,4 @@
-import type { AgentChunk } from "../types/chunks";
+import type { AgentChunk, AgentDiagram } from "../types/chunks";
 
 /**
  * The reply-stream fold, shared by the console and web send loops: pure
@@ -9,8 +9,9 @@ import type { AgentChunk } from "../types/chunks";
 
 /** A transcript entry the fold emits (frontends add their own ids/roles). */
 export interface FoldedMessage {
-  role: "tutor" | "debug" | "info";
-  text: string;
+  role: "tutor" | "debug" | "info" | "diagram";
+  text?: string;
+  diagram?: AgentDiagram;
 }
 
 /** In-flight reply state folded over the chunk stream (data). */
@@ -34,13 +35,20 @@ export function foldChunk(
   chunk: AgentChunk,
   debugMode: boolean,
 ): { state: StreamState; append: FoldedMessage[] } {
+  const flushText = (): FoldedMessage[] =>
+    state.text === "" ? [] : [{ role: "tutor", text: state.text }];
+
   if (chunk.kind === "debug") {
     if (!debugMode) return { state, append: [] };
-    const flushed: FoldedMessage[] =
-      state.text === "" ? [] : [{ role: "tutor", text: state.text }];
     return {
       state: { text: "", replied: state.replied || state.text !== "" },
-      append: [...flushed, { role: "debug", text: chunk.text }],
+      append: [...flushText(), { role: "debug", text: chunk.text }],
+    };
+  }
+  if (chunk.kind === "diagram") {
+    return {
+      state: { text: "", replied: true },
+      append: [...flushText(), { role: "diagram", diagram: chunk.diagram }],
     };
   }
   return {
