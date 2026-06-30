@@ -49,6 +49,15 @@
   }
 }
 
+/* hide the native scrollbar where we drive scrolling with our own controls
+   (e.g. the file tab strip uses ‹ › buttons instead) */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* ============ shared keyframes (referenced via animate-[…]) ============ */
 @keyframes fadeup {
   from {
