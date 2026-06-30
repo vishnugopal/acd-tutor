@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import mermaid from "mermaid";
 import type { AgentAction, ChatMessage } from "../../types";
+import type { QueuedMessage } from "../../lib/messageQueue";
 import { Markdown } from "./Markdown";
 import type { AgentDiagram } from "../../../../agents/types/chunks";
 
@@ -26,6 +27,24 @@ const MSG_TUTOR =
 const MSG_USER =
   "user self-end rounded-br-[4px] bg-brand-slate text-[#f3f8f6] " +
   "[&_code]:rounded-[5px] [&_code]:bg-white/15 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[12.5px] [&_code]:text-white";
+
+// A queued message: a user bubble, grayed and dashed, with a waiting hint —
+// it hasn't been sent yet, the tutor is still busy with an earlier reply.
+const MSG_QUEUED =
+  "queued self-end rounded-br-[4px] border border-dashed border-brand-slate/40 " +
+  "bg-brand-slate/15 text-ink/60 opacity-80";
+
+/** Grayed-out bubble for a message waiting behind the in-flight reply. */
+function QueuedBubble({ message }: { message: QueuedMessage }) {
+  return (
+    <div className={`${MSG_BASE} ${MSG_QUEUED}`} title="Waiting for the tutor…">
+      <span className="whitespace-pre-wrap">{message.display}</span>
+      <span className="mt-[3px] block text-[11px] font-semibold tracking-[0.03em] text-muted">
+        ⏳ Waiting to send…
+      </span>
+    </div>
+  );
+}
 
 function Message({
   message,
@@ -223,6 +242,7 @@ function TypingIndicator({ tutorName }: { tutorName: string }) {
 export function ChatPanel({
   messages,
   streamingText,
+  queued = [],
   onSend,
   onAction,
   actions = [],
@@ -232,6 +252,8 @@ export function ChatPanel({
   messages: ChatMessage[];
   /** null = idle; "" = waiting for first chunk; text = streaming reply. */
   streamingText: string | null;
+  /** Messages waiting behind the in-flight reply (rendered grayed-out). */
+  queued?: QueuedMessage[];
   onSend: (text: string) => void;
   onAction?: (action: AgentAction) => void;
   actions?: AgentAction[];
@@ -246,11 +268,12 @@ export function ChatPanel({
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, streamingText]);
+  }, [messages, streamingText, queued]);
 
+  // No busy guard: a message sent mid-reply is queued, not dropped.
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!draft.trim() || busy) return;
+    if (!draft.trim()) return;
     onSend(draft);
     setDraft("");
   }
@@ -285,6 +308,9 @@ export function ChatPanel({
         {/* Shown for the whole reply, not just before the first chunk — the
             tutor often pauses mid-reply to use tools. */}
         {busy && <TypingIndicator tutorName={tutorName} />}
+        {queued.map((m) => (
+          <QueuedBubble key={`queued-${m.id}`} message={m} />
+        ))}
       </div>
 
       {actions.length > 0 && onAction && (
@@ -293,7 +319,6 @@ export function ChatPanel({
             <button
               key={action.label}
               type="button"
-              disabled={busy}
               onClick={() => onAction(action)}
               className="cursor-pointer rounded-full border-[1.5px] border-cy-amber bg-cy-amber-soft px-[14px] py-[7px] text-[13.5px] font-bold text-cy-amber-dark transition-all hover:bg-cy-amber hover:text-ink active:scale-95 disabled:cursor-default disabled:opacity-50"
             >
@@ -313,14 +338,13 @@ export function ChatPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={busy ? `${tutorName} is thinking…` : placeholder}
+          placeholder={busy ? "Send another — it'll queue…" : placeholder}
           autoComplete="off"
           rows={1}
         />
         <button
           className="min-h-[46px] cursor-pointer rounded-xl bg-cy-amber px-[18px] text-sm font-extrabold text-ink active:scale-95 disabled:cursor-default disabled:opacity-60"
           type="submit"
-          disabled={busy}
         >
           Send
         </button>

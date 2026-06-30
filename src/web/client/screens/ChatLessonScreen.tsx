@@ -52,6 +52,7 @@ export function ChatLessonScreen({
           <ChatPanel
             messages={chat.messages}
             streamingText={chat.streamingText}
+            queued={chat.queued}
             onSend={chat.send}
             actions={agent.actions}
             onAction={(action) => chat.send(action.message, action.label)}

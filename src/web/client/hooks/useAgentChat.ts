@@ -10,6 +10,11 @@ import {
   loadConversationId,
   saveConversationId,
 } from "../lib/storage";
+import {
+  queueMessage,
+  takeNext,
+  type QueuedMessage,
+} from "../lib/messageQueue";
 import type { AgentDiagram } from "../../../agents/types/chunks";
 import type { ChatMessage } from "../types";
 
@@ -42,9 +47,12 @@ export interface AgentChat {
   /** null = idle; "" = waiting for first chunk; text = reply streaming in. */
   streamingText: string | null;
   isBusy: boolean;
+  /** Messages waiting behind the in-flight reply, in submission order. */
+  queued: QueuedMessage[];
   /**
-   * Sends `text` to the agent. `display` (e.g. an action button's label)
-   * replaces the raw prompt in the transcript when provided.
+   * Queues `text` for the agent (FIFO — nothing is dropped while a reply is
+   * streaming). `display` (e.g. an action button's label) replaces the raw
+   * prompt in the transcript when provided.
    */
   send: (text: string, display?: string) => void;
   /** Drops the stored conversation and starts over from the greeting. */
@@ -90,6 +98,7 @@ export function useAgentChat({
 
   const [messages, setMessages] = useState<ChatMessage[]>(greetingMessages);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [queued, setQueued] = useState<QueuedMessage[]>([]);
   const [debugMode, setDebugMode] = useState(false);
   const debugModeRef = useRef(debugMode);
   debugModeRef.current = debugMode;
@@ -154,13 +163,12 @@ export function useAgentChat({
     };
   }, [agentId, ensureSession]);
 
-  const send = useCallback(
-    (text: string, display?: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || busyRef.current) return;
+  /** Streams one queued message to the agent. Assumes the pump gated on busy. */
+  const runReply = useCallback(
+    (item: QueuedMessage) => {
       busyRef.current = true;
 
-      append(msg("user", display ?? trimmed));
+      append(msg("user", item.display));
       setStreamingText("");
       const controller = new AbortController();
       abortRef.current = controller;
@@ -172,7 +180,7 @@ export function useAgentChat({
           let state = initialStreamState;
           for await (const chunk of streamReply(
             sessionId,
-            trimmed,
+            item.text,
             controller.signal,
           )) {
             if (chunk.kind === "debug") console.debug("[tutor]", chunk.text);
@@ -212,10 +220,29 @@ export function useAgentChat({
     [ensureSession],
   );
 
+  // All input flows through the queue: a message submitted mid-reply waits its
+  // turn instead of being dropped (the busy guard used to swallow it).
+  const send = useCallback((text: string, display?: string) => {
+    const item = queueMessage(nextId++, text, display);
+    if (item) setQueued((prev) => [...prev, item]);
+  }, []);
+
+  // Pump: send the next queued message once the current reply settles.
+  // busyRef (set synchronously in runReply) gates re-entry; streamingText in
+  // the deps re-runs this when a reply finishes, draining the queue in order.
+  useEffect(() => {
+    if (busyRef.current) return;
+    const taken = takeNext(queued);
+    if (!taken) return;
+    setQueued(taken.rest);
+    runReply(taken.next);
+  }, [queued, streamingText, runReply]);
+
   const reset = useCallback(() => {
     if (busyRef.current) return;
     clearConversationId(agentId);
     sessionRef.current = null;
+    setQueued([]);
     setMessages(greetingMessages());
   }, [agentId, greetingMessages]);
 
@@ -223,6 +250,7 @@ export function useAgentChat({
     messages,
     streamingText,
     isBusy: streamingText !== null,
+    queued,
     send,
     reset,
     debugMode,
