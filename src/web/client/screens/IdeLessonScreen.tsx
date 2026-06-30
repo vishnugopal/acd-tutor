@@ -206,6 +206,7 @@ export function IdeLessonScreen({
           <ChatPanel
             messages={chat.messages}
             streamingText={chat.streamingText}
+            queued={chat.queued}
             onSend={chat.send}
             actions={actions}
             onAction={(action) => chat.send(action.message, action.label)}
