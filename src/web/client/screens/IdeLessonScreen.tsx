@@ -143,7 +143,7 @@ export function IdeLessonScreen({
         <div className="ide-left flex min-h-0 min-w-0 flex-1 flex-col">
           {/* extra top padding gives the peeking mascot headroom below the
               sticky appbar */}
-          <div className="tabbar relative flex items-end gap-1 overflow-x-auto px-4 pt-4">
+          <div className="tabbar relative flex items-end gap-1 px-4 pt-4">
             <FileTabs files={files} active={active} onSelect={handleSelectFile} />
             {!hasWorkspace && (
               <div className="ftab flex items-center gap-2 rounded-t-[10px] border border-b-0 border-line bg-white px-4 py-[9px] font-mono text-[12.5px] text-muted">
