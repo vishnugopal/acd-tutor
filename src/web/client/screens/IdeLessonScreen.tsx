@@ -125,7 +125,7 @@ export function IdeLessonScreen({
     // Desktop: lock the screen to the viewport so the chat dock keeps a fixed
     // height and scrolls internally instead of growing with the transcript.
     <LessonScreenShell
-      className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both] min-[900px]:h-dvh min-[900px]:max-h-dvh min-[900px]:overflow-hidden"
+      className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both] min-[900px]:h-[var(--vh100)] min-[900px]:max-h-[var(--vh100)] min-[900px]:overflow-hidden"
       brand={
         <span className="brand flex items-center gap-2 text-[17px] font-extrabold tracking-[-0.01em] whitespace-nowrap">
           {agent.label}

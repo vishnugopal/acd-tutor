@@ -63,7 +63,7 @@ export function App() {
   }
 
   return (
-    <div className="app mx-auto flex min-h-dvh w-full max-w-[1100px] flex-col">
+    <div className="app mx-auto flex min-h-[var(--vh100)] w-full max-w-[1100px] flex-col">
       {body}
     </div>
   );

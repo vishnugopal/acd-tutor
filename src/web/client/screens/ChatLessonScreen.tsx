@@ -26,7 +26,7 @@ export function ChatLessonScreen({
     // Viewport-bounded so the conversation card keeps a fixed height and the
     // transcript scrolls inside it.
     <LessonScreenShell
-      className="screen flex h-dvh max-h-dvh flex-col overflow-hidden animate-[fadeup_.4s_ease_both]"
+      className="screen flex h-[var(--vh100)] max-h-[var(--vh100)] flex-col overflow-hidden animate-[fadeup_.4s_ease_both]"
       brand={<CodeBuddyLogo subtitle="Wonder mode" />}
       onExit={onExit}
       busy={chat.isBusy}
