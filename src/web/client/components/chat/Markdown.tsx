@@ -5,8 +5,9 @@ import { Fragment, useMemo, type ReactNode } from "react";
  * Renders the tutor's markdown as React elements by walking marked's token
  * tree — no dangerouslySetInnerHTML, so model output can't inject markup.
  * Covers what tutors actually produce (bold/italic, inline code, fenced
- * blocks, lists, headings, links, blockquotes); anything unrecognized falls
- * back to its raw text. Block spacing/sizing lives in global.css under `.md`.
+ * blocks, lists, headings, links, blockquotes, GFM tables); anything
+ * unrecognized falls back to its raw text. Block spacing/sizing lives in
+ * global.css under `.md`.
  */
 
 function children(tokens: Token[] | undefined): ReactNode {
@@ -46,6 +47,39 @@ function renderToken(token: Token): ReactNode {
         <li key={i}>{children(item.tokens)}</li>
       ));
       return list.ordered ? <ol>{items}</ol> : <ul>{items}</ul>;
+    }
+    case "table": {
+      const table = token as Tokens.Table;
+      const cellStyle = (i: number) => {
+        const align = table.align[i];
+        return align ? { textAlign: align } : undefined;
+      };
+      return (
+        <div className="md-table-wrap overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                {table.header.map((cell, i) => (
+                  <th key={i} style={cellStyle(i)}>
+                    {children(cell.tokens)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, r) => (
+                <tr key={r}>
+                  {row.map((cell, i) => (
+                    <td key={i} style={cellStyle(i)}>
+                      {children(cell.tokens)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     }
     case "blockquote":
       return <blockquote>{children(token.tokens)}</blockquote>;

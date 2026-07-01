@@ -190,6 +190,34 @@
   margin: 10px 0;
 }
 
+.md .md-table-wrap {
+  margin: 0 0 10px;
+}
+
+.md table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--color-line);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md thead th {
+  background: var(--color-cy-amber-soft);
+  font-weight: 800;
+  color: var(--color-cy-amber-dark);
+}
+
+.md tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
 .diagram-svg-compact svg {
   max-width: min(680px, 100%);
   height: auto;
