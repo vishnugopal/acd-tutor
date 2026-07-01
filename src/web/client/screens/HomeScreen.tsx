@@ -21,6 +21,10 @@ const NODE_BY_STATE = {
   lock: "border-line bg-code-bg text-muted opacity-55",
 };
 
+/**
+ * The lesson progress track, embedded inside its tutor card: a divider, the
+ * formal course name, then the horizontal step stepper (scrolls when wide).
+ */
 function CourseStepper({
   course,
   files,
@@ -31,10 +35,10 @@ function CourseStepper({
   const { current, done } = courseProgress(files);
 
   return (
-    <div className="stepper-card rounded-[18px] border border-line bg-white p-[18px] shadow-panel">
-      <h3 className="mb-[14px] text-[13px] font-bold tracking-[0.1em] text-muted uppercase">
+    <div className="course-progress mt-[18px] border-t border-line pt-[14px]">
+      <div className="mb-[10px] text-[11px] font-bold tracking-[0.1em] text-muted uppercase">
         {course.title}
-      </h3>
+      </div>
       <div className="stepper flex items-start overflow-x-auto pb-[6px]">
         {course.steps.map((step) => {
           const isDone = done.includes(step.number);
@@ -64,6 +68,69 @@ function CourseStepper({
   );
 }
 
+/**
+ * A tutor entry on the home dashboard: icon + title + status, its progress
+ * stepper folded in when the tutor is a course, and the call-to-action.
+ */
+function TutorCard({
+  agent,
+  files,
+  anyStarted,
+  onSelect,
+}: {
+  agent: AgentInfo;
+  files: string[];
+  anyStarted: boolean;
+  onSelect: (agent: AgentInfo) => void;
+}) {
+  const ui = agentIcon(agent.id);
+  const course = agentCourse(agent.id);
+  const started = course !== undefined && files.length > 0;
+  const { current } = courseProgress(files);
+
+  return (
+    <button className={CARD} onClick={() => onSelect(agent)}>
+      {course && !started && !anyStarted && (
+        <span className="badge absolute top-4 right-4 rounded-full bg-cy-yellow px-[10px] py-1 text-[11px] font-extrabold tracking-[0.06em] text-[#5b4c00] uppercase">
+          start here
+        </span>
+      )}
+      <div className="flex items-start gap-4">
+        <div
+          className={`grid size-11 flex-none place-items-center rounded-[13px] text-[21px] ${ui.iconBg}`}
+        >
+          {ui.icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[19px] font-extrabold tracking-[-0.01em]">
+            {agent.label}
+          </h2>
+          <p className="mt-[5px] text-[14.5px] leading-normal text-muted">
+            {started && course
+              ? `You're on lesson ${current} of ${course.steps.length} — jump back in!`
+              : agent.description}
+          </p>
+        </div>
+      </div>
+
+      {course && <CourseStepper course={course} files={files} />}
+
+      <span
+        className={`mt-[14px] inline-flex items-center gap-[6px] text-sm font-bold ${course ? "text-cy-amber-dark" : "text-cy-orange"}`}
+      >
+        {course
+          ? started
+            ? "Continue learning"
+            : "Start learning"
+          : "Start asking"}{" "}
+        <i className="not-italic transition-transform duration-[160ms] group-hover:translate-x-1">
+          →
+        </i>
+      </span>
+    </button>
+  );
+}
+
 export function HomeScreen({
   agents,
   onSelect,
@@ -90,6 +157,12 @@ export function HomeScreen({
   );
   const anyStarted = startedCourses.length > 0;
 
+  // Socratic (chat-only) tutor leads the list; the rest keep their order.
+  const orderedAgents = [
+    ...agents.filter((a) => a.id === "socratic-tutor"),
+    ...agents.filter((a) => a.id !== "socratic-tutor"),
+  ];
+
   return (
     <section className="screen flex flex-1 flex-col animate-[fadeup_.4s_ease_both]">
       <AppBar brand={<CodeBuddyLogo />} />
@@ -113,64 +186,16 @@ export function HomeScreen({
           </p>
         </div>
 
-        {agents.map((agent) => {
-          const course = agentCourse(agent.id);
-          if (!course) return null;
-          return (
-            <CourseStepper
+        <div className="cards flex flex-col gap-[14px]">
+          {orderedAgents.map((agent) => (
+            <TutorCard
               key={agent.id}
-              course={course}
+              agent={agent}
               files={workspaces[agent.id] ?? []}
+              anyStarted={anyStarted}
+              onSelect={onSelect}
             />
-          );
-        })}
-
-        <div className="cards grid grid-cols-1 gap-[14px] min-[720px]:grid-cols-2">
-          {agents.map((agent) => {
-            const ui = agentIcon(agent.id);
-            const course = agentCourse(agent.id);
-            const files = workspaces[agent.id] ?? [];
-            const started = course !== undefined && files.length > 0;
-            const { current } = courseProgress(files);
-            return (
-              <button
-                key={agent.id}
-                className={CARD}
-                onClick={() => onSelect(agent)}
-              >
-                {course && !started && !anyStarted && (
-                  <span className="badge absolute top-4 right-4 rounded-full bg-cy-yellow px-[10px] py-1 text-[11px] font-extrabold tracking-[0.06em] text-[#5b4c00] uppercase">
-                    start here
-                  </span>
-                )}
-                <div
-                  className={`mb-3 grid size-11 place-items-center rounded-[13px] text-[21px] ${ui.iconBg}`}
-                >
-                  {ui.icon}
-                </div>
-                <h2 className="text-[19px] font-extrabold tracking-[-0.01em]">
-                  {agent.label}
-                </h2>
-                <p className="mt-[5px] text-[14.5px] leading-normal text-muted">
-                  {started && course
-                    ? `You're on lesson ${current} of ${course.steps.length} — jump back in!`
-                    : agent.description}
-                </p>
-                <span
-                  className={`mt-[14px] inline-flex items-center gap-[6px] text-sm font-bold ${course ? "text-cy-amber-dark" : "text-cy-orange"}`}
-                >
-                  {course
-                    ? started
-                      ? "Continue learning"
-                      : "Start learning"
-                    : "Start asking"}{" "}
-                  <i className="not-italic transition-transform duration-[160ms] group-hover:translate-x-1">
-                    →
-                  </i>
-                </span>
-              </button>
-            );
-          })}
+          ))}
         </div>
       </div>
     </section>

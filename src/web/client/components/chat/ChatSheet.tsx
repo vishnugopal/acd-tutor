@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 const SHEET_MOBILE =
-  "fixed inset-x-0 bottom-0 z-[80] mx-auto flex h-[min(62dvh,480px)] max-w-[1100px] flex-col rounded-t-[18px] border border-b-0 border-line bg-white shadow-[0_-10px_40px_rgba(61,48,6,0.16)] transition-transform duration-300 ease-[cubic-bezier(.5,1.2,.4,1)]";
+  "fixed inset-x-0 bottom-0 z-[80] mx-auto flex h-[min(calc(62dvh/var(--app-zoom)),480px)] max-w-[1100px] flex-col rounded-t-[18px] border border-b-0 border-line bg-white shadow-[0_-10px_40px_rgba(61,48,6,0.16)] transition-transform duration-300 ease-[cubic-bezier(.5,1.2,.4,1)]";
 
 // h-auto + min-h-0: the dock stretches to the (viewport-bounded) row height
 // and stays fixed there — the transcript scrolls inside, never the dock.

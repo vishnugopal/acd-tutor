@@ -683,7 +683,7 @@ const NODES = [
 
   { id: "home-screen", label: "screens/HomeScreen.tsx", sub: "dashboard + course steppers", path: "src/web/client/screens/HomeScreen.tsx",
     worlds: ["browser"], kind: "actions (UI)", concerns: ["chat-ui"], x: 1050, y: 435,
-    summary: "Tutor cards + per-course progress steppers, derived from real workspace state via courseProgress over the lesson files.",
+    summary: "One card per tutor (Socratic leads the list); a course tutor folds its progress stepper into its own card, derived from real workspace state via courseProgress over the lesson files.",
     points: [],
     notes: ["listLessonFiles errors are swallowed (.catch(() => {})) — a known low-severity item, kept"],
     tests: ["Untested directly (Phase 5 debt)"] },

@@ -6,3 +6,4 @@ Index of saved memories for acd-tutor. One line per memory.
 - [Flue local() sandbox env allowlist](flue-local-sandbox-env-allowlist.md) — host vars like $EDITOR need explicit local({ env: {...} }) forwarding
 - [Flue packaged-skill path encoding bug](flue-packaged-skill-path-encoding-bug.md) — %3A vs colon mismatch broke reference reads; patched via bun patch
 - [docs/architecture.html kept updated](docs-architecture-html-kept-updated.md) — update the NODES/EDGES diagram alongside AGENTS.md on structural changes
+- [CSS zoom vs dvh](css-zoom-dvh-vh100.md) — global CSS zoom scales dvh after layout; use var(--vh100) for full-height, not raw dvh
